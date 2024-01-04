@@ -141,7 +141,7 @@ Plot the internal removal variants data(OL)
 # recode the genotype
 levels <- c(WT = "wt", PC = "rescue",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
 
-oxi.dat <- data.ol.oxi %>% 
+oxi.ol.dat <- data.ol.oxi %>% 
   filter(genotype %in% c("wt", "4OL", "6OL", "8OL", "10OL","rescue")) %>%  
   select(Time, replicate = Replicate, genotype, median) %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
@@ -152,23 +152,45 @@ oxi.dat <- data.ol.oxi %>%
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 6, 1, 5, 4)]  
 names(genotype_color) <- names(levels)
 
-oxi.dat %>%
+oxi.ol.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
-  xlab("Phosphate starvation, time (min)")
+  xlab("2mM H2O2, time (min)")
   #scale_y_continuous(limits = c(NA, 22))
 
 #ggsave("output/OL_oxi.png", width = 6, height = 8)
+
+
+##### 2mM H2O2 OL timepoint plot function
+tp_GFP <- function(...){
+  
+  all_tp <- list(...)
+  for (input_tp in all_tp) {   
+  
+    df_tp <- oxi.ol.dat %>% filter(new_time == input_tp) %>% mutate(genotype = factor(genotype, levels = levels))
+    
+    print(ggplot(df_tp, aes(x = genotype, y = new_median, fill = Genotype)) + 
+    geom_point() +
+    stat_summary(fun.data = "mean_cl_boot", conf.int = .95, color = "Red", linewidth = 1, size = 0.8) +
+    labs(x =paste0("2mM H2O2, OL variants ", deparse1(substitute(input_tp)), " min"), y = "Cta1-GFP protein level (a.u.)") +
+    theme_cowplot(line_size = 0.7, font_size = 14) +
+    theme(legend.position = "none",
+          axis.title = element_text(size = rel(1)), 
+          axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),))
+  }
+}
+
+# plot the 2mM H2O2 OL variants at 0min, 90min, 120min timepoints
+
+tp_GFP(0,90,120,240)
+  
+
 ```
 
 
 
-
-
-
-
-Import TrunV data and get the replicate, time and genotype info
+### Import TrunV data and get the replicate, time and genotype info
 ```{r}
 files <- dir("input/TrunV_0Pi", pattern = "d01*") # get the file names of the merged
 files <- file.path("input//TrunV_0Pi", files)         # this appends the directory to the file names
@@ -200,7 +222,7 @@ data.TrunV <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = c
 
 
 
-Plot the truncation variants data (TrunV)
+#### Plot the truncation variants data (TrunV)
 ```{r}
 # recode the genotype
 levels <- c(WT = "wt", `PC` = "rescue", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
@@ -223,7 +245,7 @@ pi.dat %>%
   xlab("Phosphate starvation, time (min)")
   #scale_y_continuous(limits = c(NA, 22))
 
-ggsave("output/TrunV_0Pi.png", width = 6, height = 8)
+#ggsave("output/TrunV_0Pi.png", width = 6, height = 8)
 ```
 #### 2mM H2O2 Data
 Import 2mM H2O2 TrunV data and get the replicate, time and genotype info
@@ -263,7 +285,7 @@ Plot the Truncation variants data(TrunV)
 # recode the genotype
 levels <- c(WT = "wt", `PC` = "rescue", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
 
-oxi.dat <- data.TrunV.oxi  %>% 
+oxi.TrunV.dat <- data.TrunV.oxi  %>% 
   filter(genotype %in% c("wt", "2V", "4V", "6V", "8V","rescue")) %>%  
   select(Time, replicate = Replicate, genotype, median) %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
@@ -274,14 +296,38 @@ oxi.dat <- data.TrunV.oxi  %>%
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 6, 1, 5, 4)]  
 names(genotype_color) <- names(levels)
 
-oxi.dat %>%
+oxi.TrunV.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
-  xlab("Phosphate starvation, time (min)")
+  xlab("2mM H2O2 stress, time (min)")
   #scale_y_continuous(limits = c(NA, 22))
 
 #ggsave("output/TrunV_oxi.png", width = 6, height = 8)
+
+##### 2mM H2O2 OL timepoint plot function
+tp_GFP <- function(...){
+  
+  all_tp <- list(...)
+  for (input_tp in all_tp) {   
+  
+    df_tp <- oxi.TrunV.dat %>% filter(new_time == input_tp) %>% mutate(genotype = factor(genotype, levels = levels))
+    
+    print(ggplot(df_tp, aes(x = genotype, y = new_median, fill = Genotype)) + 
+    geom_point() +
+    stat_summary(fun.data = "mean_cl_boot", conf.int = .95, color = "Red", linewidth = 1, size = 0.8) +
+    labs(x =paste0("2mM H2O2, OL variants ", deparse1(substitute(input_tp)), " min"), y = "Cta1-GFP protein level (a.u.)") +
+    theme_cowplot(line_size = 0.7, font_size = 14) +
+    theme(legend.position = "none",
+          axis.title = element_text(size = rel(1)), 
+          axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),))
+  }
+}
+
+# plot the 2mM H2O2 OL variants at 0min, 90min, 120min timepoints
+
+tp_GFP(0,90,120,240)
+
 ```
 **_1st Differential derivative (Slope) for each curve_**
 ```{r}
