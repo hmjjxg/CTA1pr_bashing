@@ -25,7 +25,8 @@ p.timecourse <- list(
   scale_size_manual(values = c(0.8, 1.5), guide = "none"),
   labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
   theme_cowplot(line_size = 0.7, font_size = 14),
-  theme(legend.position=c(0.05,0.75), 
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
         #legend.box.background = element_rect(color = "black"),
         #legend.box.margin = margin(3,3,3,3),
         legend.text = element_text(face = 3), 
@@ -113,13 +114,13 @@ pi.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color))
-#ggsave("output/Rev2468_0Pi.png", width = 4.2, height = 4)
+#ggsave("output/Rev2468_0Pi.png", width = 6.3, height = 6)
 
 h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color))
-#ggsave("output/Rev2468_2mMH2O2.png", width = 4.2, height = 4)
+#ggsave("output/Rev2468_2mMH2O2.png", width = 6.3, height = 6)
 ```
 ### Annotation: Below has not been adjusted yet
 
