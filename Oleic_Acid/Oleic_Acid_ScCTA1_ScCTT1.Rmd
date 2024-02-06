@@ -81,7 +81,7 @@ data <- left_join(dat.ord, treat.fil, by = c("Replicate", "Sample"))
 
 ```
 
-### CTA1 induction during -Pi [Fig. 4A]
+### CTA1 induction during stress
 Get the subset of no Pi data
 ```{r}
 oa.dat <- data %>% 
@@ -177,19 +177,22 @@ names(genotype_color) <- c("wt", "ScCTA1pr (200-1kb)", "ScCTT1pr (200-1kb)")
 oa.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "0.2% Oleic Acid, Time (min)")
 #ggsave("output/OA.png", width = 6.3, height = 6)
 
 h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/2mMH2O2.png", width = 6.3, height = 6)
 
 ctrl.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Control, Time (min)")
 #ggsave("output/Ctrl.png", width = 6.3, height = 6)
 ```
 
@@ -226,19 +229,22 @@ names(genotype_color) <- c("ScCTA1pr (200-1kb)", "ScCTT1pr (200-1kb)")
 sc.h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/Sc_H2O2.png", width = 6.3, height = 6)
 
 sc.oa.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "0.2% Oleic Acid, Time (min)")
 #ggsave("output/Sc_oa.png", width = 6.3, height = 6)
 
 sc.ctrl.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Control, Time (min)")
 #ggsave("output/Sc_Ctrl.png", width = 6.3, height = 6)
 
 ```

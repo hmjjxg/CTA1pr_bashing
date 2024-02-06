@@ -52,7 +52,7 @@ tp <- c("0min",  "30min", "60min", "90min", "120min", "150min",  "180min", "210m
 
 # import and process the data to the format we want
 dat.ord <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = cols()), .id = "Replicate") %>% 
-  filter(`X Parameter` == "BL1-H", is.na(`Y Parameter`), Sample != "beads", Count > 100) %>% 
+  filter(Gate == "CTA1-GFP", `X Parameter` == "BL1-H", is.na(`Y Parameter`), Sample != "beads", Count > 100) %>% 
   select(Replicate, Plate, Group, Sample, Count, median = `X Median`, peak = `X Peak`,
          sd = `X SD`, cv = `X %CV`, rCV = `X %rCV`) %>% 
   mutate(Group = ordered(Group, levels = tp)) %>% 
@@ -85,7 +85,7 @@ data <- left_join(dat.ord, treat.fil, by = c("Replicate", "Sample"))
 Get the subset of no Pi data
 ```{r}
 pi.dat <- data %>% 
-  filter(treat == "0Pi") %>%  
+  filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
   mutate(Genotype = fct_recode(genotype, `wt` = "wt", `Rev 200-400` = "Rev24",  `Rev 600-800` = "Rev68")) %>% 
   mutate(new_median =median/1000) %>% 
@@ -93,7 +93,7 @@ pi.dat <- data %>%
   arrange(new_time, genotype, replicate)
 
 h2o2.dat <- data %>% 
-  filter(treat == "2mMH2O2") %>%  
+  filter(treat == "2mMH2O2") %>%  #, HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
   mutate(Genotype = fct_recode(genotype, `wt` = "wt", `Rev 200-400` = "Rev24",  `Rev 600-800` = "Rev68")) %>% 
   mutate(new_median =median/1000) %>% 
@@ -104,7 +104,6 @@ h2o2.dat <- data %>%
 *need to check the skn7 and yap1 data, I got them switched somehow*
 
 #### Full time course
-
 ```{r}
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2)] 
 #genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1)] 
@@ -113,13 +112,15 @@ names(genotype_color) <- c("wt", "Rev 200-400", "Rev 600-800")
 pi.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
 #ggsave("output/Rev2468_0Pi.png", width = 6.3, height = 6)
 
 h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color))
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/Rev2468_2mMH2O2.png", width = 6.3, height = 6)
 ```
 ### Annotation: Below has not been adjusted yet
