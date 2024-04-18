@@ -10,6 +10,7 @@ library(ggtext)
 #library(mgcv)
 #library(broom)
 library(cowplot)
+Sys.setenv(LANG = "en")
 ```
 
 ## Common plotting functions
@@ -36,6 +37,26 @@ p.timecourse <- list(
         axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
   )
 )
+
+reduced.timecourse <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                           scale_x_continuous(breaks = seq(0,240,30)),
+                           scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                           labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+                           theme_cowplot(line_size = 0.7, font_size = 14),
+                           theme(legend.position=c(0.02,0.9),
+                           legend.text = element_text(face = 3), 
+                           legend.title = element_text(),
+                           axis.title = element_text(size = rel(1)), 
+                           axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
+scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                           scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                           theme_cowplot(line_size = 0.7, font_size = 14),
+                           theme(legend.position=c(0.02,0.9),
+                           legend.text = element_text(face = 3), 
+                           legend.title = element_text(),
+                           axis.title = element_text(size = rel(1)), 
+                           axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
 ```
 
 ## TF deletion mutants compared with wild type
@@ -121,4 +142,87 @@ h2o2.dat %>%
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/Rs1_2mMH2O2.png", width = 6.3, height = 8)
+```
+
+
+#### Get the loess curve fitting for the timecourse data
+```{r}
+# check for the loss fit curve
+pi.model <- pi.dat  %>%   
+group_by(Genotype) %>%
+mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+h2o2.model <- h2o2.dat  %>%   
+group_by(Genotype) %>%
+mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+pi.model %>% ggplot(aes(x = new_time, y = model, color = Genotype)) + reduced.timecourse + geom_line(aes(y = model)) + scale_color_manual(values= genotype_color, limits = names(genotype_color))
+
+pi.model.test <- pi.model %>% group_by(Genotype,new_time) %>% summarise(ave_median = mean(median)) %>% mutate(model = loess(ave_median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+pi.model.test %>% ggplot(aes(x = new_time, y = model, color = Genotype)) + reduced.timecourse + geom_line(aes(y = model)) + scale_color_manual(values= genotype_color, limits = names(genotype_color))
+
+
+
+## get AUC for - Pi data into a dataframe
+pi.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.pi <- pi.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.pi,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+pi.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+pi.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+
+
+# get AUC for 2mM H2O2 data
+h2o2.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("h2o2.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.h2o2 <- h2o2.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.h2o2,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+h2o2.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+h2o2.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+# combind area data
+area <- merge(pi.area,h2o2.area)
+```
+
+#### Check the loess fitting assumption: normality and curve fitting
+```{r}
+
+```
+
+### regulatory information map
+```{r}
+# calculate the relative information retaining within each genotype
+reg_info <- area %>% 
+  mutate(pi_pcnt = pi.area/max(pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/max(h2o2.area))
+
+reg_info %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
+  geom_point(size = 3, fill = genotype_color) +
+  scatter + 
+  labs(x = "Pi (%)", y = "H2O2 (%)") +
+  scale_color_manual(values = genotype_color, limits = names(genotype_color))
+
 ```
