@@ -43,6 +43,41 @@ p.timecourse <- list(
         axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
   )
 )
+
+mean.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+
+
+scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                scale_y_continuous(breaks = seq(0,1.0,0.25)),
+                scale_x_continuous(breaks = seq(0,1.0,0.25)),
+                scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                expand_limits(x = 0, y = 0),
+                theme_cowplot(line_size = 0.7, font_size = 14),
+                theme(legend.position=c(0.02,0.82),
+                legend.text = element_text(face = 3), 
+                legend.title = element_text(),
+                axis.title = element_text(size = rel(1)), 
+                axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
 ```
 
 ## CTA1 induction in OL variants
@@ -84,7 +119,7 @@ Plot the internal removal variants data(OL)
 # recode the genotype
 levels <- c(WT = "wt", PC = "rescue",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
 
-pi.dat <- data.ol.pi %>% 
+pi.ol.dat <- data.ol.pi %>% 
   filter(genotype %in% c("wt", "4OL", "6OL", "8OL", "10OL","rescue")) %>%  
   select(Time, replicate = Replicate, genotype, median) %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
@@ -95,7 +130,7 @@ pi.dat <- data.ol.pi %>%
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 6, 1, 5, 4)]  
 names(genotype_color) <- names(levels)
 
-pi.dat %>%
+pi.ol.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
@@ -187,6 +222,84 @@ tp_GFP(0,90,120,240)
   
 
 ```
+**Overlapping variants**
+#### Get the loess curve fitting for the timecourse data
+```{r}
+# check for the loss fit curve
+pi.ol.dat %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/loess_Ol_0Pi.png", width = 6.3, height = 8)
+
+oxi.ol.dat %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/loess_Ol_2mMH2O2.png", width = 6.3, height = 8)
+
+
+## get AUC for - Pi data into a dataframe
+pi.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.pi <- pi.ol.dat %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.pi,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+pi.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+pi.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+
+
+# get AUC for 2mM H2O2 data
+h2o2.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("h2o2.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.h2o2 <- oxi.ol.dat %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.h2o2,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+h2o2.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+h2o2.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+# combind area data
+area <- merge(pi.area,h2o2.area)
+```
+
+#### Check the loess fitting assumption: normality and curve fitting
+```{r}
+
+```
+
+### regulatory information map
+```{r}
+# calculate the relative information retaining within each genotype
+reg_info <- area %>% 
+  mutate(pi_pcnt = pi.area/(.[.$Genotype == "WT",]$pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "WT",]$h2o2.area)))
+
+reg_info %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
+  scatter + 
+  geom_point(size = 3, aes(color = Genotype)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_color_manual(values = genotype_color, limits = names(genotype_color))
+#ggsave("output/Olvswt_0pivsh2o2_scatter.png", width = 6.3, height = 6.3)
+```
+
+
 
 
 
@@ -227,7 +340,7 @@ data.TrunV <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = c
 # recode the genotype
 levels <- c(WT = "wt", `PC` = "rescue", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
 
-pi.dat <- data.TrunV %>% 
+pi.TrunV.dat <- data.TrunV %>% 
   filter(genotype %in% c("wt", "2V", "4V", "6V", "8V","rescue")) %>%  
   select(Time, replicate = Replicate, genotype, median) %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
@@ -238,7 +351,7 @@ pi.dat <- data.TrunV %>%
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 6, 1, 5, 4)]  
 names(genotype_color) <- names(levels)
 
-pi.dat %>%
+pi.TrunV.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
@@ -329,6 +442,96 @@ tp_GFP <- function(...){
 tp_GFP(0,90,120,240)
 
 ```
+** Truncation variants**
+#### Get the loess curve fitting for the timecourse data
+```{r}
+# check for the loss fit curve
+pi.model <- pi.TrunV.dat  %>%   
+group_by(Genotype) %>%
+mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+h2o2.model <- oxi.TrunV.dat  %>%   
+group_by(Genotype) %>%
+mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+pi.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/loess_TrunV_0Pi.png", width = 6.3, height = 8)
+
+h2o2.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/loess_TrunV_2mMH2O2.png", width = 6.3, height = 8)
+
+
+## get AUC for - Pi data into a dataframe
+pi.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.pi <- pi.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.pi,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+pi.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+pi.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+
+
+# get AUC for 2mM H2O2 data
+h2o2.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("h2o2.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.h2o2 <- h2o2.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.h2o2,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+h2o2.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+h2o2.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+# combind area data
+area <- merge(pi.area,h2o2.area)
+```
+
+#### Check the loess fitting assumption: normality and curve fitting
+```{r}
+
+```
+
+### regulatory information map
+```{r}
+# calculate the relative information retaining within each genotype
+reg_info <- area %>% 
+  mutate(pi_pcnt = pi.area/(.[.$Genotype == "WT",]$pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "WT",]$h2o2.area)))
+
+reg_info %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
+  scatter + 
+  geom_point(size = 3, aes(color = Genotype)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_color_manual(values = genotype_color, limits = names(genotype_color))
+#ggsave("output/TrunVvswt_0pivsh2o2_scatter.png", width = 6.3, height = 6.3)
+```
+
+
+
+
+
+**test code**
 **_1st Differential derivative (Slope) for each curve_**
 ```{r}
 wt.test <- oxi.dat %>% filter(genotype %in% c("wt"))

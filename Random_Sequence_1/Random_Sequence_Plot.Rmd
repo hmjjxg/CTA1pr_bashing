@@ -73,6 +73,7 @@ mean.timecourse <- list(
 scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
                            scale_size_manual(values = c(0.8, 1.5), guide = "none"),
                            theme_cowplot(line_size = 0.7, font_size = 14),
+                           expand_limits(x = 0, y = 0),
                            theme(legend.position=c(0.02,0.9),
                            legend.text = element_text(face = 3), 
                            legend.title = element_text(),
@@ -242,15 +243,15 @@ area <- merge(pi.area,h2o2.area)
 ```{r}
 # calculate the relative information retaining within each genotype
 reg_info <- area %>% 
-  mutate(pi_pcnt = pi.area/max(pi.area)) %>% 
-  mutate(h2o2_pcnt = h2o2.area/max(h2o2.area))
+  mutate(pi_pcnt = pi.area/(.[.$Genotype == "wt",]$pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "wt",]$h2o2.area)))
 
 reg_info %>% 
   ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
   scatter + 
   geom_point(size = 3, aes(color = Genotype)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
-  labs(x = "Pi (%)", y = "H2O2 (%)") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
   scale_color_manual(values = genotype_color, limits = names(genotype_color))
 #ggsave("output/RS1vswt_0pivsh2o2_scatter.png", width = 6.3, height = 6.3)
 ```
