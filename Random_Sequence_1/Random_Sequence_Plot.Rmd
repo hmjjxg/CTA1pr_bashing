@@ -38,6 +38,27 @@ p.timecourse <- list(
   )
 )
 
+mean.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+
 reduced.timecourse <- list(stat_summary(fun = "mean", geom = "point", size = 3),
                            scale_x_continuous(breaks = seq(0,240,30)),
                            scale_size_manual(values = c(0.8, 1.5), guide = "none"),
@@ -156,13 +177,19 @@ h2o2.model <- h2o2.dat  %>%
 group_by(Genotype) %>%
 mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
 
-pi.model %>% ggplot(aes(x = new_time, y = model, color = Genotype)) + reduced.timecourse + geom_line(aes(y = model)) + scale_color_manual(values= genotype_color, limits = names(genotype_color))
+pi.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/loess_Rs1_0Pi.png", width = 6.3, height = 8)
 
-pi.model.test <- pi.model %>% group_by(Genotype,new_time) %>% summarise(ave_median = mean(median)) %>% mutate(model = loess(ave_median ~ new_time, span = 0.75, degree = 2)$fitted)
+h2o2.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/loess_Rs1_2mMH2O2.png", width = 6.3, height = 8)
 
-pi.model.test %>% ggplot(aes(x = new_time, y = model, color = Genotype)) + reduced.timecourse + geom_line(aes(y = model)) + scale_color_manual(values= genotype_color, limits = names(genotype_color))
 
+## test codes for calculating mean value before loess fit
+#pi.model.test <- pi.model %>% group_by(Genotype,new_time) %>% summarise(ave_median = mean(median)) %>% mutate(model = loess(ave_median ~ new_time, span = 0.75, degree = 2)$fitted)
 
+#pi.model.test %>% ggplot(aes(x = new_time, y = model, color = Genotype)) + reduced.timecourse + geom_line(aes(y = model)) + scale_color_manual(values= genotype_color, limits = names(genotype_color))
 
 ## get AUC for - Pi data into a dataframe
 pi.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.area", "Genotype"))))
