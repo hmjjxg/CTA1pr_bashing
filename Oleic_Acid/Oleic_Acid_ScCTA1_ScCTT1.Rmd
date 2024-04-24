@@ -143,7 +143,7 @@ ctrl.dat %>%
 oa.dat <- data %>% 
   filter(treat == "0.2%_Oleic_Acid", HB_strain != "yH298") %>%  # 
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `CgCTA1pr` = "wt", `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
+  mutate(Genotype = fct_recode(genotype, `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -151,7 +151,7 @@ oa.dat <- data %>%
 h2o2.dat <- data %>% 
   filter(treat == "2mMH2O2", HB_strain != "yH298") %>%  # 
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `CgCTA1pr` = "wt", `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
+  mutate(Genotype = fct_recode(genotype, `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -159,7 +159,7 @@ h2o2.dat <- data %>%
 ctrl.dat <- data %>% 
   filter(treat == "ctrl", HB_strain != "yH298") %>%  # 
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `CgCTA1pr` = "wt", `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
+  mutate(Genotype = fct_recode(genotype, `ScCTA1pr (1kb)` = "ScCTA1pr",  `ScCTT1pr (1kb)` = "ScCTT1pr")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -179,21 +179,21 @@ oa.dat %>%
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "0.2% Oleic Acid, Time (min)")
-ggsave("output/OA.png", width = 6.3, height = 6)
+#ggsave("output/OA.png", width = 6.3, height = 6)
 
 h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "2mM H2O2, Time (min)")
-ggsave("output/2mMH2O2.png", width = 6.3, height = 6)
+#ggsave("output/2mMH2O2.png", width = 6.3, height = 6)
 
 ctrl.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "Control, Time (min)")
-ggsave("output/Ctrl.png", width = 6.3, height = 6)
+#ggsave("output/Ctrl.png", width = 6.3, height = 6)
 ```
 
 ### only plot the Sc data
