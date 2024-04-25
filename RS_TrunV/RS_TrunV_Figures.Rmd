@@ -1,0 +1,181 @@
+---
+title: "RS_TrunV"
+author: "JY"
+date: "2024-04-25"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(ggtext)
+#library(mgcv)
+#library(broom)
+library(cowplot)
+Sys.setenv(LANG = "en")
+```
+
+## Goal
+Plot the dynamics for CTA1 promoter bashing variants under - Pi and 2 mM H2O2 treatment
+
+## Common plotting functions
+**Update 2022-11-08** 
+This list is used as a shared plotting set up.
+```{r}
+p.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.05,0.75), 
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+mean.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+
+
+scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                scale_y_continuous(breaks = seq(0,1.0,0.25)),
+                scale_x_continuous(breaks = seq(0,1.0,0.25)),
+                scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                expand_limits(x = 0, y = 0),
+                theme_cowplot(line_size = 0.7, font_size = 14),
+                theme(legend.position=c(0.02,0.82),
+                legend.text = element_text(face = 3), 
+                legend.title = element_text(),
+                axis.title = element_text(size = rel(1)), 
+                axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
+```
+
+
+
+### Prepare data
+Import data
+Beads were used to adjust for comparable voltage across days
+```{r}
+files <- dir("input/gz_merge", pattern = "merge-*") # get the file names of the merged
+files <- file.path("input/gz_merge", files)         # this appends the directory to the file names
+
+names(files) <- c("Rep1-0Pi-Ctrl","Rep2-0Pi-H2O2","Rep3-0Pi-Ctrl","Rep4-H2O2-Ctrl")
+
+
+tp <- c("0min",  "30min", "60min", "90min", "120min", "150min",  "180min", "210min", "240min") # ordered time points
+
+# import and process the data to the format we want
+dat.ord <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = cols()), .id = "Replicate") %>% 
+  filter(Gate == "CTA1-GFP", `X Parameter` == "BL1-H", is.na(`Y Parameter`), Sample != "beads", Count > 100) %>% 
+  select(Replicate, Plate, Group, Sample, Count, median = `X Median`, peak = `X Peak`,
+         sd = `X SD`, cv = `X %CV`, rCV = `X %rCV`) %>% 
+  mutate(Group = ordered(Group, levels = tp)) %>% 
+  arrange(Group)
+
+```
+
+Subset the dataset and merge with the genotype information
+```{r}
+# get genotype info
+tr_files <- dir("input/treatment", pattern = "d0*")
+tr_files <- file.path("input/treatment", tr_files)
+names(tr_files) <- c("Rep1-0Pi-Ctrl","Rep2-0Pi-H2O2","Rep3-0Pi-Ctrl","Rep4-H2O2-Ctrl")
+
+
+treat.fil <- tr_files %>% 
+  map(~read_csv(., na = c("","NA","N/A"), col_types = cols())) %>% 
+  bind_rows(.id = "Replicate") %>% 
+  filter(!is.na(`group_name`)) %>% 
+  select(Replicate, genotype = `group_name`, Sample, treat, HB_strain)
+
+
+# combine genotype and treat variables into the flow data
+data.TrunV.ord <- left_join(dat.ord, treat.fil, by = c("Replicate", "Sample"))
+```
+
+#### Import & Combine data
+import the RS1 data and combine it with the TrunV data into one dataframe
+
+```{r}
+RS1 <- read.csv("input/RS1.csv")
+
+data.comb <- data.TrunV.ord %>% bind_rows(RS1)
+
+levels <- c(`wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")
+```
+
+
+### separate data based on treatment 
+```{r}
+pi.dat <- data.comb %>% 
+  filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+h2o2.dat <- data.comb %>% 
+  filter(treat == "2mMH2O2") %>%  # , HB_strain != "yH298"
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+```
+
+### Get wt, 2V and RS1 CTA1 figure
+####induction full time course during -Pi
+```{r}
+genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2)] 
+#genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1)] 
+names(genotype_color) <- c("wt", "2V", "RS1 200-1000")
+
+pi.dat %>%
+  filter(!is.na(new_median), Genotype %in% c("wt", "2V", "RS1 200-1000")) %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/2V_Rs1_0Pi.png", width = 6.3, height = 8)
+
+h2o2.dat %>%
+  filter(!is.na(new_median), Genotype %in% c("wt", "2V", "RS1 200-1000")) %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/2V_Rs1_2mMH2O2.png", width = 6.3, height = 8)
+
+```
+
+#### maximum induction level & basal expression level
+```{r}
+
+
+```

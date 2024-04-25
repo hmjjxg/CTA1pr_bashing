@@ -122,7 +122,9 @@ treat.fil <- tr_files %>%
 # combine genotype and treat variables into the flow data
 data <- left_join(dat.ord, treat.fil, by = c("Replicate", "Sample"))
 
-
+# get the RS1 data output into csv file
+write.csv(data, file = "output/RS1.csv", row.names = F)
+write.csv(data, file = "../RS_TrunV/input/RS1.csv", row.names = F)
 ```
 
 ### CTA1 induction during -Pi [Fig. 4A]
