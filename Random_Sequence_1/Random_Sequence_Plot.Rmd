@@ -133,7 +133,7 @@ Get the subset of no Pi data
 pi.dat <- data %>% 
   filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -141,7 +141,7 @@ pi.dat <- data %>%
 h2o2.dat <- data %>% 
   filter(treat == "2mMH2O2") %>%  #, HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -151,7 +151,7 @@ h2o2.dat <- data %>%
 ```{r}
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5)] 
 #genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1)] 
-names(genotype_color) <- c("wt", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000")
+names(genotype_color) <- c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000")
 
 pi.dat %>%
   filter(!is.na(new_median)) %>% 
@@ -245,8 +245,8 @@ area <- merge(pi.area,h2o2.area)
 ```{r}
 # calculate the relative information retaining within each genotype
 reg_info <- area %>% 
-  mutate(pi_pcnt = pi.area/(.[.$Genotype == "wt",]$pi.area)) %>% 
-  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "wt",]$h2o2.area)))
+  mutate(pi_pcnt = pi.area/(.[.$Genotype == "WT",]$pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "WT",]$h2o2.area)))
 
 reg_info %>% 
   ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
@@ -256,4 +256,8 @@ reg_info %>%
   labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
   scale_color_manual(values = genotype_color, limits = names(genotype_color))
 #ggsave("output/RS1vswt_0pivsh2o2_scatter.png", width = 6.3, height = 6.3)
+
+# save the reg_info.ol 
+write.csv(reg_info, file = "output/rs1_pct.csv", row.names = F)
+write.csv(reg_info, file = "../RS_TrunV/input/rs1_pct.csv", row.names = F)
 ```

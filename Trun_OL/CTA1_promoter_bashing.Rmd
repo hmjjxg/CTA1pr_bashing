@@ -276,7 +276,7 @@ ind.ol.h2o2 %>%
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
   ylab("Relative Induction Rate") +
-  xlab("Internal Removal (IR) Variants, 2mM H2O2, 180 min")
+  xlab("Internal Removal (IR) Variants, 2mM H2O2, 90 min")
 #ggsave("output/OL_ind_H2O2_90.png", width = 6, height = 8)
 
 # calculate the raw max CTA1-GFp
@@ -287,7 +287,7 @@ ind.ol.h2o2 %>%
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 2mM H2O2, 180 min")
+  xlab("Internal Removal (IR) Variants, 2mM H2O2, 90 min")
 #ggsave("output/OL_raw_H2O2_90.png", width = 6, height = 8)
 
 ```
@@ -372,7 +372,7 @@ row_cnt = row_cnt + 1
 }
 
 # combind area data
-area <- merge(pi.area,h2o2.area)
+area.ol <- merge(pi.area,h2o2.area)
 ```
 
 #### Check the loess fitting assumption: normality and curve fitting
@@ -383,11 +383,11 @@ area <- merge(pi.area,h2o2.area)
 ### regulatory information map
 ```{r}
 # calculate the relative information retaining within each genotype
-reg_info <- area %>% 
+reg_info.ol <- area.ol %>% 
   mutate(pi_pcnt = pi.area/(.[.$Genotype == "WT",]$pi.area)) %>% 
   mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "WT",]$h2o2.area)))
 
-reg_info %>% 
+reg_info.ol %>% 
   ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
   scatter + 
   geom_point(size = 3, aes(color = Genotype)) +
@@ -395,6 +395,10 @@ reg_info %>%
   labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
   scale_color_manual(values = genotype_color, limits = names(genotype_color))
 #ggsave("output/Olvswt_0pivsh2o2_scatter.png", width = 6.3, height = 6.3)
+
+# save the reg_info.ol 
+write.csv(reg_info.ol, file = "output/ol_pct.csv", row.names = F)
+write.csv(reg_info.ol, file = "../RS_TrunV/input/ol_pct.csv", row.names = F)
 ```
 
 

@@ -127,7 +127,7 @@ RS1 <- read.csv("input/RS1.csv")
 
 data.comb <- data.TrunV.ord %>% bind_rows(RS1)
 
-levels <- c(`wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")
+levels <- c(`WT` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")
 ```
 
 
@@ -136,7 +136,7 @@ levels <- c(`wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V`
 pi.dat <- data.comb %>% 
   filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -144,7 +144,7 @@ pi.dat <- data.comb %>%
 h2o2.dat <- data.comb %>% 
   filter(treat == "2mMH2O2") %>%  # , HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)
@@ -156,17 +156,17 @@ h2o2.dat <- data.comb %>%
 ```{r}
 genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2)] 
 #genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1)] 
-names(genotype_color) <- c("wt", "2V", "RS1 200-1000")
+names(genotype_color) <- c("WT", "2V", "RS1 200-1000")
 
 pi.dat %>%
-  filter(!is.na(new_median), Genotype %in% c("wt", "2V", "RS1 200-1000")) %>% 
+  filter(!is.na(new_median), Genotype %in% c("WT", "2V", "RS1 200-1000")) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "Phosphate starvation, Time (min)")
 #ggsave("output/2V_Rs1_0Pi.png", width = 6.3, height = 8)
 
 h2o2.dat %>%
-  filter(!is.na(new_median), Genotype %in% c("wt", "2V", "RS1 200-1000")) %>% 
+  filter(!is.na(new_median), Genotype %in% c("WT", "2V", "RS1 200-1000")) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
   scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
   labs(x = "2mM H2O2, Time (min)")
@@ -174,8 +174,174 @@ h2o2.dat %>%
 
 ```
 
-#### maximum induction level & basal expression level
+#### get the reg_infor from TrunV data
+#### Get the loess curve fitting for the timecourse data
+```{r}
+# use the same batch of wt for TrunV
+
+levels.TrunV <- c(`WT`= "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
+genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 6, 1, 5, 4)]  
+names(genotype_color) <- names(levels.TrunV)
+
+pi.TrunV.dat <- data.TrunV.ord %>%
+  filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  mutate(Genotype = fct_recode(genotype, `wt` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate) %>% 
+  filter(genotype %in% c("wt", "2V", "4V", "6V", "8V","PC")) %>%  
+  select(Time, replicate, genotype, median) %>%
+  mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+
+oxi.TrunV.dat <- data.TrunV.ord %>%
+  filter(treat == "2mMH2O2") %>%  # , HB_strain != "yH298"
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `PC` = "PC", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate) %>% 
+  filter(genotype %in% c("wt", "2V", "4V", "6V", "8V","PC")) %>%  
+  select(Time, replicate, genotype, median) %>%
+  mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+
+
+# check for the loss fit curve
+pi.model <- pi.TrunV.dat  %>% filter(genotype %in% c("wt", "PC", "2V", "4V", "6V", "8V")) %>%  
+  group_by(Genotype) %>%
+  mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+h2o2.model <- oxi.TrunV.dat  %>% filter(genotype %in% c("wt", "PC", "2V", "4V", "6V", "8V")) %>%  
+  group_by(Genotype) %>%
+  mutate(model = loess(median ~ new_time, span = 0.75, degree = 2)$fitted)
+
+pi.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/loess_TrunV_0Pi.png", width = 6.3, height = 8)
+
+h2o2.model %>% ggplot(aes(x = new_time, y = new_median, color = Genotype)) + mean.timecourse + scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/loess_TrunV_2mMH2O2.png", width = 6.3, height = 8)
+
+
+## get AUC for - Pi data into a dataframe
+pi.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.pi <- pi.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.pi,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+pi.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+pi.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+
+
+# get AUC for 2mM H2O2 data
+h2o2.area <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("h2o2.area", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(genotype_color)) {
+# calculate AUC  
+madeup.h2o2 <- h2o2.model %>% filter(Genotype == x) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+f <- function(x) predict(madeup.h2o2,newdata=x)
+# perform integration
+tmp <- integrate(f,0,240)$value
+gt_tmp <- x
+h2o2.area[row_cnt,col_cnt] <- tmp
+col_cnt = col_cnt + 1
+h2o2.area[row_cnt,col_cnt] <- gt_tmp
+col_cnt = 1
+row_cnt = row_cnt + 1
+}
+
+# combind area data
+area <- merge(pi.area,h2o2.area)
+```
+
+#### Check the loess fitting assumption: normality and curve fitting
 ```{r}
 
+```
 
+### regulatory information map
+```{r}
+# calculate the relative information retaining within each genotype
+reg_info.TrunV <- area %>% 
+  mutate(pi_pcnt = pi.area/(.[.$Genotype == "WT",]$pi.area)) %>% 
+  mutate(h2o2_pcnt = h2o2.area/((.[.$Genotype == "WT",]$h2o2.area)))
+
+reg_info.TrunV %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = Genotype) +
+  scatter + 
+  geom_point(size = 3, aes(color = Genotype)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_color_manual(values = genotype_color, limits = names(genotype_color))
+#ggsave("output/TrunVvswt_0pivsh2o2_scatter_Batch2.png", width = 6.3, height = 6.3)
+```
+
+# combine TrunV, OL and RS1 reg_info
+```{r}
+# import OL and RS1 reg_info
+# do not need the OL PC, we already have a PC
+reg.OL <- read.csv("input/ol_pct.csv") %>% filter(!(Genotype == "PC"))
+reg.RS1 <- read.csv("input/rs1_pct.csv")
+
+reg <- reg_info.TrunV %>% bind_rows(reg.OL) %>% bind_rows(reg.RS1)
+
+# annotate contructs with length info
+reg_anno <- read.csv("input/reg_anno.csv", sep=",")
+
+# get rid of duplicated WT and do not need PC
+reg_all <- left_join(reg, reg_anno, by = "Genotype") %>% select(-c(pi.area, h2o2.area)) %>% unique() %>% filter(!(Genotype == "PC"))
+
+
+reg_all %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = loss_length == 200) +
+  scatter + 
+  geom_point(aes(color = loss_length == 200 ), size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_colour_manual(values = c("#666666", "#ff3399" ))
+
+reg_all %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = loss_length) +
+  scatter + 
+  geom_point(aes(color = loss_length ), size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_color_viridis_c()
+
+reg_all %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = reg_length) +
+  scatter + 
+  geom_point(aes(color = reg_length ), size = 3, alpha=0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  scale_color_viridis_c(option = "plasma") +
+  labs(x = expression(AUC[var]/AUC[wt]*", -Pi"), y = expression(AUC[var]/AUC[wt]*",2mM "*H[2]*O[2]))
+#ggsave("output/Reg_vswt_scatter.png", width = 6.3, height = 6.3)
+
+reg_all %>% 
+  ggplot(aes(x = pi_pcnt, y = h2o2_pcnt), color = type) +
+  scatter + 
+  geom_point(aes(color = type ), size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#666666") +
+  labs(x = "Pi (relative to wt)", y = "H2O2 (relative to wt)") +
+  scale_color_viridis_d()
 ```
