@@ -10,6 +10,8 @@ library(ggtext)
 #library(mgcv)
 #library(broom)
 library(cowplot)
+library(viridis)
+library(scales)
 Sys.setenv(LANG = "en")
 ```
 
@@ -38,6 +40,7 @@ p.timecourse <- list(
   )
 )
 
+
 mean.timecourse <- list(
   stat_summary(fun = "mean", geom = "point", size = 3),
   stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
@@ -59,26 +62,36 @@ mean.timecourse <- list(
 )
 
 
-#reduced.timecourse <- list(stat_summary(fun = "mean", geom = "point", size = 3),
-#                           scale_x_continuous(breaks = seq(0,240,30)),
-#                           scale_size_manual(values = c(0.8, 1.5), guide = "none"),
-#                           labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
-#                           theme_cowplot(line_size = 0.7, font_size = 14),
-#                           theme(legend.position=c(0.02,0.9),
-#                           legend.text = element_text(face = 3), 
-#                           legend.title = element_text(),
-#                           axis.title = element_text(size = rel(1)), 
-#                           axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
 
 scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
-                           scale_size_manual(values = c(0.8, 1.5), guide = "none"),
-                           theme_cowplot(line_size = 0.7, font_size = 14),
-                           expand_limits(x = 0, y = 0),
-                           theme(legend.position=c(0.02,0.9),
-                           legend.text = element_text(face = 3), 
-                           legend.title = element_text(),
-                           axis.title = element_text(size = rel(1)), 
-                           axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+                scale_y_continuous(breaks = seq(0,1.0,0.25)),
+                scale_x_continuous(breaks = seq(0,1.0,0.25)),
+                scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                expand_limits(x = 0, y = 0),
+                theme_cowplot(line_size = 0.7, font_size = 14),
+                theme(legend.position=c(0.02,0.82),
+                legend.text = element_text(face = 3), 
+                legend.title = element_text(),
+                axis.title = element_text(size = rel(1)), 
+                axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
+bar.list <- list(
+  stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x =paste0("2mM H2O2, OL variants ", deparse1(substitute(input_tp)), " min"), y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.4), axis.text = element_text(size = rel(1)),
+  )
+)
+
 ```
 
 ## TF deletion mutants compared with wild type
@@ -130,44 +143,247 @@ write.csv(data, file = "../RS_TrunV/input/RS1.csv", row.names = F)
 ### CTA1 induction during -Pi [Fig. 4A]
 Get the subset of no Pi data
 ```{r}
+# recode the genotype
+levels <- c(`WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")
+
 pi.dat <- data %>% 
   filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
-  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain) %>%
   mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate)%>% 
+  mutate(genotype = factor(genotype, levels = levels))
 
 h2o2.dat <- data %>% 
   filter(treat == "2mMH2O2") %>%  #, HB_strain != "yH298"
-  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, HB_strain) %>%
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain) %>%
   mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate)%>% 
+  mutate(genotype = factor(genotype, levels = levels))
 ```
 
 #### Full time course
 ```{r}
-genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5)] 
-#genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1)] 
-names(genotype_color) <- c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000")
+names(genotype_color) <- names(levels)
 
 pi.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket")  +
   labs(x = "Phosphate starvation, Time (min)")
-#ggsave("output/Rs1_0Pi.png", width = 6.3, height = 8)
+#ggsave("output/Rs1_0Pi.png", width = 6, height = 8)
 
 h2o2.dat %>%
   filter(!is.na(new_median)) %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_manual(values= genotype_color, limits = names(genotype_color)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket")  +
+  theme(legend.position=c(0.75,0.9)) +
   labs(x = "2mM H2O2, Time (min)")
-#ggsave("output/Rs1_2mMH2O2.png", width = 6.3, height = 8)
+#ggsave("output/Rs1_2mMH2O2.png", width = 6, height = 8)
 ```
+## Basal expression level of OL variants
+```{r}
+# Use 0min data from both H2O2 and -Pi treatment; 
+data.RS <- data %>% filter(treat != "Ctrl")%>%  
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain, Treatment = treat) %>%
+  mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate) %>% 
+  mutate(genotype = factor(genotype, levels = levels))
 
+
+## seperately plot the basal level for 0mM Pi and 2mM H2O2
+data.RS %>%
+  filter(!is.na(new_median), Time == "0min") %>% 
+  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  theme(legend.position=c(0.75,0.85)) +
+  xlab("Random Sequence(RS) Variants, 0 min") +
+  facet_grid(. ~ Treatment) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/RS1_seperate_basal.png", width = 6, height = 8)
+
+```
+## Plateau/maximum expression Level of OL variants (V1)
+The logic is cancel out the impact of basal expression level of each variants. To do so, minus the 0 min basal expression level from each variants, then plot the deduced data at all tp and the selected tp.
+```{r}
+# get the individual basal mean
+pi.basal <- pi.dat %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(replicate, Strain, genotype, basal)
+
+oxi.basal <- h2o2.dat %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(replicate, Strain, genotype, basal)
+
+# calculate the new CTA1-GFP (a.u.) by decuding the 0 min number for individual strain
+
+pi.dect <- merge(pi.dat, pi.basal, by = c("Strain", "replicate","genotype")) %>% 
+  select(Time, replicate, genotype, median, basal) %>%
+  mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
+  mutate(new_median =(median-basal)/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  arrange(new_time, genotype, replicate)
+
+oxi.dect <- merge(h2o2.dat, oxi.basal, by = c("Strain", "replicate","genotype")) %>% 
+  select(Time, replicate, genotype, median, basal) %>%
+  mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
+  mutate(new_median =(median-basal)/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  arrange(new_time, genotype, replicate)
+
+# timecourse deduct curve
+pi.dect %>%
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  labs(x = "Phosphate starvation, Time (min)")
+#ggsave("output/RS1_0Pi_deduct.png", width = 6, height = 8)
+
+oxi.dect %>%
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/RS1_oxi_deduct.png", width = 6, height = 8)
+
+
+# single timepoint deduct curve
+
+
+# - Pi: 240min
+pi.dect %>% 
+  filter(!is.na(new_median), Time == "240min") %>% 
+  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  theme(legend.position=c(0.75,0.85)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  xlab("Random Sequence(RS) Variants, 0mM Pi, 240 min")
+#ggsave("output/RS1_deduct_0Pi_240.png", width = 6, height = 8)
+
+
+# 2mM Oxi: 90min
+oxi.dect %>% 
+  filter(!is.na(new_median), Time == "90min") %>% 
+  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  theme(legend.position=c(0.75,0.85)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  xlab("Random Sequence(RS) Variants, 2mM H2O2, 90 min")
+#ggsave("output/RS1_deduct_Oxi_90.png", width = 6, height = 8)
+
+```
+### slope/differetiation of the loess curve
+```{r}
+# plot & calculate the slope/differiation changes of OL:- Pi
+
+# check the non-duplicated strain names
+check <- pi.dat %>%  group_by(Genotype) %>% summarise(Strain = paste(unique(Strain), collapse = ', '))
+
+# Can play the the genotype name to plot the diff(loess model)
+test.pi <- pi.dat %>% filter(Genotype == "RS1 200-400") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+
+x <- 0:240
+px <- predict(test.pi, newdata = x)
+px1 <- diff(px)
+which.max(px1) # get the x value
+max(px1) # equals px1[which.max(px1)]
+
+par(mfrow=c(1, 2))
+plot(x, px, main="loess model")
+
+plot(x[-1], px1, main="diff(loess model)")
+abline(v=which.max(px1), col="red")
+
+# get the max slope and the respective tp for each sample into a dataframe: - Pi 
+pi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.slope", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(levels)) {
+  tmp.pi <- pi.dat %>% filter(Genotype == x)
+# get the loess function
+  for (y in unique(pi.dat$replicate)) {
+    test.pi <- tmp.pi %>% filter(replicate == y) 
+    for (z in unique(test.pi$Strain)) {
+      final.pi <- test.pi %>% filter(Strain == z) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2)
+      x_var <- 0:240
+      px <- predict(final.pi, newdata = x_var)
+      # perform differentiation
+      tmp <- max(diff(px))
+      gt_tmp <- x
+      pi.slope[row_cnt,col_cnt] <- tmp
+      col_cnt = col_cnt + 1
+      pi.slope[row_cnt,col_cnt] <- gt_tmp
+      col_cnt = 1
+      row_cnt = row_cnt + 1
+    }}}
+
+
+pi.slope <- pi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000"))) 
+
+# plot the slope of the curve: - Pi
+pi.slope %>% 
+  filter(!is.na(pi.slope)) %>% 
+  ggplot(aes(x = Genotype, y = pi.slope, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  theme(legend.position=c(0.75,0.9)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  ylab("Maximum Slope (loess fit)") +
+  xlab("Random Sequence(RS)  Variants, 0mM Pi")
+ggsave("output/RS1_slope_0Pi.png", width = 6, height = 8)
+
+
+# get the max slope and the respective tp for each sample into a dataframe: 2mM H2O2 
+oxi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("oxi.slope", "Genotype"))))
+row_cnt = 1
+col_cnt = 1
+for (x in names(levels)) {
+  tmp.oxi <- h2o2.dat %>% filter(Genotype == x)
+# get the loess function
+  for (y in unique(h2o2.dat$replicate)) {
+    test.oxi <- tmp.oxi %>% filter(replicate == y) 
+    for (z in unique(test.oxi$Strain)) {
+      final.oxi <- test.oxi %>% filter(Strain == z) %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2)
+      x_var <- 0:240
+      px <- predict(final.oxi, newdata = x_var)
+      # perform differentiation
+      tmp <- max(diff(px))
+      gt_tmp <- x
+      oxi.slope[row_cnt,col_cnt] <- tmp
+      col_cnt = col_cnt + 1
+      oxi.slope[row_cnt,col_cnt] <- gt_tmp
+      col_cnt = 1
+      row_cnt = row_cnt + 1
+    }}}
+
+
+oxi.slope <- oxi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000"))) 
+
+# plot the slope of the curve: - Pi
+oxi.slope %>% 
+  filter(!is.na(oxi.slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = oxi.slope, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  theme(legend.position=c(0.75,0.9)) +
+  scale_color_viridis_d(limits = names(levels), option = "rocket") +
+  ylab("Maximum Slope (loess fit)") +
+  xlab("Random Sequence(RS) Variants, 2mM H2O2")
+ggsave("output/RS1_slope_oxi.png", width = 6, height = 8)
+
+```
 
 #### Get the loess curve fitting for the timecourse data
 ```{r}
