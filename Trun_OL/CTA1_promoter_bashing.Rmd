@@ -15,7 +15,8 @@ library(ggtext)
 #library(mgcv)
 #library(broom)
 library(cowplot)
-Sys.setenv(LANG = "en")
+library(ggpattern)
+#Sys.setenv(LANG = "en")
 ```
 
 ## Goal
@@ -96,6 +97,23 @@ bar.list <- list(
   )
 )
 
+bar.list.no.stat <- list(
+  #stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+  
+
 
 ```
 
@@ -136,8 +154,9 @@ data.ol.pi <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = c
 Plot the internal removal variants data(OL)
 ```{r}
 # recode the genotype
-levels <- c(`WT` = "wt", `PC`= "rescue",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
-levels.norescue <- c(`WT` = "wt",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
+levels <- c(`WT` = "wt", `PC`= "rescue",`IR_2.4` = "4OL", `IR_4.6` = "6OL", `IR_6.8` = "8OL", `IR_8.10` = "10OL")
+levels.norescue <- c(`WT` = "wt",`IR_2.4` = "4OL", `IR_4.6` = "6OL", `IR_6.8` = "8OL", `IR_8.10` = "10OL")
+G.levels <- c("WT", "PC", "IR_8.10", "IR_6.8", "IR_4.6", "IR_2.4")
 
 pi.ol.dat <- data.ol.pi %>% 
   filter(genotype %in% c("wt", "4OL", "6OL", "8OL", "10OL","rescue")) %>%  
@@ -146,7 +165,8 @@ pi.ol.dat <- data.ol.pi %>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 pi.ol.dat %>%
   filter(!is.na(new_median), genotype != "rescue") %>% 
@@ -197,7 +217,8 @@ oxi.ol.dat <- data.ol.oxi %>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels))%>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
 oxi.ol.dat %>%
@@ -216,31 +237,33 @@ data.ol <- data.ol.pi %>% bind_rows(data.ol.oxi) %>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate) %>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels))%>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
 data.ol %>%
   filter(!is.na(new_median), genotype != "rescue", Time == "0min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 0 min")
+  theme(legend.position="none") +
+  xlab("Basal expression, 0 min")
 #ggsave("output/OL_basal.png", width = 6, height = 8)
 
 ## seperately plot the basal level for 0mM Pi and 2mM H2O2
 data.ol %>%
   filter(!is.na(new_median), genotype != "rescue", Time == "0min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 0 min") +
+  xlab("Basal expression, 0 min") +
   facet_grid(. ~ Treatment) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
-#ggsave("output/OL_seperate_basal.png", width = 6, height = 8)
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position="none")
+#ggsave("output/OL_seperate_basal.png", width = 9, height = 6)
 
 ```
 ## Plateau/maximum expression Level of OL variants (V1)
@@ -252,9 +275,6 @@ data.ol.pi.basal <- data.ol.pi %>% filter(!is.na(median), Time == "0min") %>% gr
 data.ol.oxi.basal <- data.ol.oxi %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(Replicate, Strain, genotype, basal)
 
 # calculate the new CTA1-GFP (a.u.) by decuding the 0 min number for individual strain
-levels <- c(`WT `= "wt", PC = "rescue",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
-levels.norescue <- c(`WT `= "wt",`4OL` = "4OL", `6OL` = "6OL", `8OL` = "8OL", `10OL` = "10OL")
-
 
 pi.ol.dect <- merge(data.ol.pi, data.ol.pi.basal, by = c("Strain", "Replicate","genotype")) %>% 
   filter(genotype %in% c("wt", "4OL", "6OL", "8OL", "10OL","rescue")) %>%  
@@ -263,6 +283,7 @@ pi.ol.dect <- merge(data.ol.pi, data.ol.pi.basal, by = c("Strain", "Replicate","
   mutate(new_median =(median-basal)/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
   arrange(new_time, genotype, replicate)
 
 oxi.ol.dect <- merge(data.ol.oxi, data.ol.oxi.basal, by = c("Strain", "Replicate","genotype")) %>% 
@@ -272,6 +293,7 @@ oxi.ol.dect <- merge(data.ol.oxi, data.ol.oxi.basal, by = c("Strain", "Replicate
   mutate(new_median =(median-basal)/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
   arrange(new_time, genotype, replicate)
 
 # timecourse deduct curve
@@ -291,51 +313,106 @@ oxi.ol.dect %>%
 
 
 # single timepoint deduct curve
-# - Pi: 180min
-pi.ol.dect %>% 
-  filter(!is.na(new_median), genotype != "rescue", Time == "180min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
-  geom_boxplot() +
-  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
-  geom_jitter(width = 0.2) +
-  scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 0mM Pi, 180 min")
-#ggsave("output/OL_deduct_0Pi_180.png", width = 6, height = 8)
-
 # - Pi: 240min
 pi.ol.dect %>% 
   filter(!is.na(new_median), genotype != "rescue", Time == "240min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 0mM Pi, 240 min")
+  theme(legend.position = "none") +
+  xlab("0mM Pi, 240 min")
 #ggsave("output/OL_deduct_0Pi_240.png", width = 6, height = 8)
 
-
-# - Pi: 180min
-pi.ol.dect %>% 
-  filter(!is.na(new_median), genotype != "rescue", Time == "180min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
-  geom_boxplot() +
-  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
-  geom_jitter(width = 0.2) +
-  scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 0mM Pi, 180 min")
-#ggsave("output/OL_deduct_0Pi_180.png", width = 6, height = 8)
 
 # 2mM Oxi: 90min
 oxi.ol.dect %>% 
   filter(!is.na(new_median), genotype != "rescue", Time == "90min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue)) +
-  xlab("Internal Removal (IR) Variants, 2mM H2O2, 90 min")
+  theme(legend.position = "none") +
+  xlab("2mM H2O2, 90 min")
 #ggsave("output/OL_deduct_Oxi_90.png", width = 6, height = 8)
 
+# calculate maximum plateau relative to wt
+pi.ol.dect.rel <- pi.ol.dect %>% filter(Time == "240min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "0Pi")
+  
+oxi.ol.dect.rel <- oxi.ol.dect %>% filter(Time == "90min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "2mMH2O2")
+
+ol.rel <- bind_rows(pi.ol.dect.rel, oxi.ol.dect.rel)
+
+# plot the maximum relative to wt
+ol.rel %>% 
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = Genotype, y = rel_ori, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#624185","#FF8C00")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = position_dodge(width = .9)) +
+  #stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8, position = position_dodge(width = .9)) +
+  #geom_jitter(width = 0.2) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  #scale_fill_manual(values= c("#624185", "#ffa345")) +
+  xlab("Internal removal (IR) variants") +
+  ylab("max induction relative to wt (ori)") +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/OL_ori_rel_max.png", width = 9, height = 6)
+
+
+
+ol.rel %>% 
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = Genotype, y = rel_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#8e7cc3ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("max induction relative to wt (red)") +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/OL_deduct_rel_max.png", width = 12, height = 4)
+
+
+  
 ```
 
 ## Induction Rate of OL variants (V2)
@@ -441,7 +518,7 @@ tp_GFP(0,90,120,240)
 check <- pi.ol.dat %>%  group_by(Genotype) %>% summarise(Strain = paste(unique(Strain), collapse = ', '))
 
 # Can play the the genotype name to plot the diff(loess model)
-test.pi <- pi.ol.dat %>% filter(Genotype == "4OL") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+test.pi <- pi.ol.dat %>% filter(Genotype == "IR_2.4") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
 
 x <- 0:240
 px <- predict(test.pi, newdata = x)
@@ -456,7 +533,7 @@ plot(x[-1], px1, main="diff(loess model)")
 abline(v=which.max(px1), col="red")
 
 # get the max slope and the respective tp for each sample into a dataframe: - Pi 
-pi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.slope", "Genotype"))))
+pi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -479,24 +556,26 @@ for (x in names(levels)) {
     }}}
 
 
-pi.slope <- pi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT","PC","4OL","6OL", "8OL","10OL"))) 
+pi.slope <- pi.slope %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  mutate(Treatment = "0Pi")
 
 # plot the slope of the curve: - Pi
 pi.slope %>% 
-  filter(!is.na(pi.slope), Genotype != "PC") %>% 
-  ggplot(aes(x = Genotype, y = pi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.85,0.9)) +
+  theme(legend.position = "none") +
   scale_color_viridis_d(limits = names(levels.norescue)) +
   ylab("Maximum Slope (loess fit)") +
   xlab("Internal Removal (IR) Variants, 0mM Pi")
-ggsave("output/OL_slope_0Pi.png", width = 6, height = 8)
+#ggsave("output/OL_slope_0Pi.png", width = 6, height = 8)
 
 
 # get the max slope and the respective tp for each sample into a dataframe: 2mM H2O2 
-oxi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("oxi.slope", "Genotype"))))
+oxi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -519,20 +598,65 @@ for (x in names(levels)) {
     }}}
 
 
-oxi.slope <- oxi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT","PC","4OL","6OL", "8OL","10OL"))) 
+oxi.slope <- oxi.slope %>% 
+  mutate(Genotype = factor(Genotype, levels =G.levels)) %>% 
+  mutate(Treatment = "2mMH2O2")
 
 # plot the slope of the curve: - Pi
 oxi.slope %>% 
-  filter(!is.na(oxi.slope), Genotype != "PC") %>% 
-  ggplot(aes(x = Genotype, y = oxi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.85,0.9)) +
+  theme(legend.position= "None") +
   scale_color_viridis_d(limits = names(levels.norescue)) +
   ylab("Maximum Slope (loess fit)") +
   xlab("Internal Removal (IR) Variants, 2mM H2O2")
 #ggsave("output/OL_slope_oxi.png", width = 6, height = 8)
+
+
+# get the maximum slope relative to the wt
+pi.slope.rel <- pi.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+oxi.slope.rel <- oxi.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+# get the combined slope
+ol.slope <- bind_rows(pi.slope.rel, oxi.slope.rel)
+
+# plot the maximum slope relative to wt
+ol.slope %>% 
+  filter(!is.na(rel_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#8e7cc3ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("maximum slope relative to wt") +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/OL_slope_rel_max.png", width = 12, height = 4)
+
 
 ```
 
@@ -658,8 +782,10 @@ data.TrunV.pi <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types 
 #### Plot the truncation variants data (TrunV)
 ```{r}
 # recode the genotype
-levels <- c(WT = "wt", `PC` = "rescue", `2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
-levels.norescue <- c(WT = "wt",`2V` = "2V",`4V` = "4V", `6V` = "6V", `8V` = "8V")
+levels <- c(`WT` = "wt", `PC`= "rescue", `IR_2.10` = "2V", `IR_4.10` = "4V", `IR_6.10` = "6V", `IR_8.10` = "8V")
+levels.norescue <- c(`WT` = "wt",`IR_2.10` = "2V", `IR_4.10` = "4V", `IR_6.10` = "6V", `IR_8.10` = "8V")
+G.levels <- c("WT", "PC", "IR_8.10", "IR_6.10", "IR_4.10", "IR_2.10")
+
 
 pi.TrunV.dat <- data.TrunV.pi %>% 
   filter(genotype %in% c("wt", "2V", "4V", "6V", "8V","rescue")) %>%  
@@ -667,7 +793,8 @@ pi.TrunV.dat <- data.TrunV.pi %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
 pi.TrunV.dat %>%
@@ -720,7 +847,8 @@ oxi.TrunV.dat <- data.TrunV.oxi  %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
 oxi.TrunV.dat %>%
@@ -729,36 +857,44 @@ oxi.TrunV.dat %>%
   scale_color_viridis_d(limits = names(levels.norescue), option = "plasma")  +
   xlab("2mM H2O2 stress, time (min)")
   #scale_y_continuous(limits = c(NA, 22))
-
 #ggsave("output/TrunV_oxi_norescue.png", width = 6, height = 8)
 ```
 ## Basal expression level of OL variants
 ```{r}
 # Use 0min data from both H2O2 and -Pi treatment; 
-data.TrunV <- data.TrunV.pi %>% bind_rows(data.TrunV.oxi ) %>%  
+data.TrunV <- bind_rows(data.TrunV.oxi,data.TrunV.pi) %>%  
   select(Time, replicate = Replicate, genotype, median, Treatment) %>%
   mutate(Genotype = fct_recode(genotype, !!!levels)) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate) %>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
+
+# plot WT curve at - Pi and 2mM H2O2 conditions
+data.TrunV %>%
+  filter(!is.na(new_median), Genotype == "WT") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Treatment)) + p.timecourse +
+  scale_color_manual(values = c("#8e7cc3ff","#f6b26bff"))  +
+  xlab("Time (min)")
+#ggsave("output/TrunV_oxi_norescue.png", width = 6, height = 8)
 
 
 data.TrunV %>%
   filter(!is.na(new_median), genotype != "rescue", Time == "0min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
   scale_color_viridis_d(limits = names(levels.norescue), option = "plasma") +
-  theme(legend.position=c(0.85,0.9)) +
+  theme(legend.position="none") +
   xlab("Truncation Variants, 0 min")
 #ggsave("output/TrunV_basal.png", width = 6, height = 8)
 
 ## seperately plot the basal level for 0mM Pi and 2mM H2O2
 data.TrunV %>%
   filter(!is.na(new_median), genotype != "rescue", Time == "0min") %>% 
-  ggplot(aes(x = genotype, y = new_median, color = Genotype)) + bar.list +
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
@@ -766,7 +902,7 @@ data.TrunV %>%
   theme(legend.position=c(0.85,0.9)) +
   xlab("Truncation Variants, 0 min") +
   facet_grid(. ~ Treatment) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
 #ggsave("output/TrunV_seperate_basal.png", width = 6, height = 8)
 
 ```

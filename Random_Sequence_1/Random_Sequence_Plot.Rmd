@@ -12,6 +12,7 @@ library(ggtext)
 library(cowplot)
 library(viridis)
 library(scales)
+library(ggpattern)
 Sys.setenv(LANG = "en")
 ```
 
@@ -144,21 +145,21 @@ write.csv(data, file = "../RS_TrunV/input/RS1.csv", row.names = F)
 Get the subset of no Pi data
 ```{r}
 # recode the genotype
-levels <- c(`WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")
+levels <- c(`WT` = "wt", `IS_2.4` = "RS1_24",  `IS_2.6` = "RS1_26", `IS_2.8` = "RS1_28", `IS_2.10` = "RS1_210")
 
 pi.dat <- data %>% 
   filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `IS_2.4` = "RS1_24",  `IS_2.6` = "RS1_26", `IS_2.8` = "RS1_28", `IS_2.10` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
   mutate(genotype = factor(genotype, levels = levels))
 
 h2o2.dat <- data %>% 
-  filter(treat == "2mMH2O2") %>%  #, HB_strain != "yH298"
+  filter(treat == "2mMH2O2") %>% 
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain) %>%
-  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `RS1 200-400` = "RS1_24",  `RS1 200-600` = "RS1_26", `RS1 200-800` = "RS1_28", `RS1 200-1000` = "RS1_210")) %>% 
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `IS_2.4` = "RS1_24",  `IS_2.6` = "RS1_26", `IS_2.8` = "RS1_28", `IS_2.10` = "RS1_210")) %>% 
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
@@ -183,6 +184,25 @@ h2o2.dat %>%
   theme(legend.position=c(0.75,0.9)) +
   labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/Rs1_2mMH2O2.png", width = 6, height = 8)
+
+# only wt
+rs.data <- data %>% 
+  filter(!is.na(median)) %>%  # , HB_strain != "yH298"
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, median, Strain = HB_strain, treat) %>%
+  mutate(Genotype = fct_recode(genotype, `WT` = "wt", `IS_2.4` = "RS1_24",  `IS_2.6` = "RS1_26", `IS_2.8` = "RS1_28", `IS_2.10` = "RS1_210")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)%>% 
+  mutate(genotype = factor(genotype, levels = levels))
+    
+rs.data %>% 
+  filter(!is.na(new_median), Genotype == "WT") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = treat, shape = treat)) + p.timecourse +
+  scale_color_manual(values = c("#674ea7ff","#e69138ff","#666666ff"))  +
+  scale_shape_manual(values = c(16, 17, 15)) +
+  xlab("Time (min)")
+#ggsave("output/WT.png", width = 6, height = 6.6)
+
 ```
 ## Basal expression level of OL variants
 ```{r}
