@@ -15,7 +15,7 @@ library(ggtext)
 #library(mgcv)
 #library(broom)
 library(cowplot)
-library(ggpattern)
+#library(ggpattern)
 #Sys.setenv(LANG = "en")
 ```
 
@@ -262,8 +262,34 @@ data.ol %>%
   scale_color_viridis_d(limits = names(levels.norescue)) +
   xlab("Basal expression, 0 min") +
   facet_grid(. ~ Treatment) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position="none")
+  theme(strip.background = element_rect(colour="black", fill="white", linewidth = 1, linetype="solid"), legend.position="none")
 #ggsave("output/OL_seperate_basal.png", width = 9, height = 6)
+
+## plot the 0mM Pi and 2mM H2O2 basal side by side
+data.ol %>% 
+  filter(!is.na(new_median), genotype != "rescue", Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = new_median, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mM` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 10)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 6, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Basal exp (a.u.)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
+#ggsave("output/OL_basal_bar.png", width = 10.16, height = 2)
 
 ```
 ## Plateau/maximum expression Level of OL variants (V1)
@@ -368,22 +394,22 @@ ol.rel %>%
                    color = "black", 
                    pattern_fill = "black",
                    pattern_angle = 45,
-                   pattern_density = 0.1,
-                   pattern_spacing = 0.025,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#624185","#FF8C00")) +
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = position_dodge(width = .9)) +
-  #stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8, position = position_dodge(width = .9)) +
-  #geom_jitter(width = 0.2) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
-  #scale_fill_manual(values= c("#624185", "#ffa345")) +
   xlab("Internal removal (IR) variants") +
-  ylab("max induction relative to wt (ori)") +
+  ylab("Max induction (relative to wt,ori)") +
+  guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
-#ggsave("output/OL_ori_rel_max.png", width = 9, height = 6)
+#ggsave("output/OL_ori_rel_max.png", width = 10.16, height = 2)
 
 
 
@@ -395,11 +421,11 @@ ol.rel %>%
                    color = "black", 
                    pattern_fill = "black",
                    pattern_angle = 45,
-                   pattern_density = 0.1,
-                   pattern_spacing = 0.025,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#8e7cc3ff","#f6b26bff")) +
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
   geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
                   position_dodge(width = .9)) +
@@ -407,10 +433,10 @@ ol.rel %>%
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("Internal removal (IR) variants") +
-  ylab("max induction relative to wt (red)") +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
-#ggsave("output/OL_deduct_rel_max.png", width = 12, height = 4)
-
+  ylab("Maximum/Plateau") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
+#ggsave("output/OL_red_rel_max.png", width = 10.16, height = 2)
 
   
 ```
@@ -636,16 +662,16 @@ ol.slope <- bind_rows(pi.slope.rel, oxi.slope.rel)
 ol.slope %>% 
   filter(!is.na(rel_slope), Genotype != "PC") %>% 
   ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
-  geom_bar_pattern(stat = "summary", fun = "mean",
+ geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
                    pattern_fill = "black",
                    pattern_angle = 45,
-                   pattern_density = 0.1,
-                   pattern_spacing = 0.025,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#8e7cc3ff","#f6b26bff")) +
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
   geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
                   position_dodge(width = .9)) +
@@ -653,9 +679,10 @@ ol.slope %>%
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("Internal removal (IR) variants") +
-  ylab("maximum slope relative to wt") +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
-#ggsave("output/OL_slope_rel_max.png", width = 12, height = 4)
+  ylab("Slope") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
+#ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
 
 
 ```
