@@ -15,7 +15,7 @@ library(ggtext)
 #library(mgcv)
 #library(broom)
 library(cowplot)
-#library(ggpattern)
+library(ggpattern)
 #Sys.setenv(LANG = "en")
 ```
 
@@ -433,7 +433,7 @@ ol.rel %>%
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("Internal removal (IR) variants") +
-  ylab("Maximum/Plateau") +
+  ylab("Plateau") +
   guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
 #ggsave("output/OL_red_rel_max.png", width = 10.16, height = 2)
@@ -679,7 +679,7 @@ ol.slope %>%
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("Internal removal (IR) variants") +
-  ylab("Slope") +
+  ylab("Max Slope") +
   guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
 #ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
@@ -936,7 +936,7 @@ data.TrunV %>%
 
 
 
-## Plateau/maximum expression Level of OL variants (V1)
+## Plateau/maximum expression Level of Truncation variants (V1)
 The logic is cancel out the impact of basal expression level of each variants. To do so, minus the 0 min basal expression level from each variants, then plot the deduced data at all tp and the selected tp.
 ```{r}
 # get the individual basal mean
@@ -1003,6 +1003,129 @@ oxi.TrunV.dect %>%
   scale_color_viridis_d(limits = names(levels.norescue), option = "plasma") +
   xlab("Truncation Variants, 2mM H2O2, 90 min")
 #ggsave("output/TrunV_deduct_Oxi_90.png", width = 6, height = 8)
+
+# calculate maximum plateau relative to wt
+pi.TrunV.dect.rel <- pi.TrunV.dect %>% filter(Time == "240min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "0Pi")
+  
+oxi.TrunV.dect.rel <- oxi.TrunV.dect %>% filter(Time == "90min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "2mMH2O2")
+
+TrunV.rel <- bind_rows(pi.TrunV.dect.rel, oxi.TrunV.dect.rel)
+
+# plot the maximum relative to wt
+TrunV.rel %>% 
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = Genotype, y = rel_ori, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Max induction (relative to wt,ori)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/TrunV_ori_rel_max.png", width = 10.16, height = 2)
+
+
+
+TrunV.rel %>% 
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = Genotype, y = rel_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
+#ggsave("output/TrunV_red_rel_max.png", width = 10.16, height = 2)
+
+```
+### test epistasis effect between 600 - 800 bps and 800 to 1000 bps
+```{r}
+# Method I: get IR_6.10, IR_6.8, IR_8.10 and WT for epistasis test
+IR_6810.pi <- ol.rel %>% filter(Genotype %in% c("IR_6.8", "IR_8.10", "WT"), Treatment == "0Pi", Time == "240min")
+
+IR_6810.oxi <- ol.rel %>% filter(Genotype %in% c("IR_6.8", "IR_8.10", "WT"), Treatment == "2mMH2O2", Time == "90min")
+
+IR_610.pi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "WT"), Treatment == "0Pi", Time == "240min")
+IR_610.oxi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "WT"), Treatment == "2mMH2O2", Time == "90min")
+
+epi.pi <- bind_rows(IR_6810.pi, IR_610.pi)
+epi.oxi <- bind_rows(IR_6810.oxi, IR_610.oxi)
+
+epi.pi <- epi.pi %>% select(Genotype, Treatment, median, median_adj = new_median) %>% 
+  mutate(median = median/1000)
+epi.oxi <- epi.oxi %>% select(Genotype, Treatment, median, median_adj = new_median) %>% 
+  mutate(median = median/1000)
+
+# set up contrast matrix
+epi <- bind_rows(epi.pi, epi.oxi) %>% mutate(beta_6.8 = 0, beta_8.10 = 0)
+epi$beta_6.8 <- with(epi, ifelse(Genotype == "IR_6.8" | Genotype == "IR_6.10", -1, 0))
+epi$beta_8.10 <- with(epi, ifelse(Genotype == "IR_8.10" | Genotype == "IR_6.10", -1, 0))
+
+# make the statistical model
+## original data (basal expression not deduced)
+fit.ori.pi <- epi %>% filter(Treatment == "0Pi") %>% lm(median ~ beta_6.8 + beta_8.10 + 
+                      beta_6.8:beta_8.10,
+                    data = .)
+round(summary(fit.ori.pi)$coef, 3)
+
+fit.ori.oxi <- epi %>% filter(Treatment == "2mMH2O2") %>% lm(median ~ beta_6.8 + beta_8.10 +
+                                                               beta_6.8:beta_8.10, data = .)
+round(summary(fit.ori.oxi)$coef, 3)
+
+## deduced data
+fit.adj.pi <- epi %>% filter(Treatment == "0Pi") %>% lm(median_adj ~ beta_6.8 + beta_8.10 +
+                beta_6.8:beta_8.10,
+              data = .)
+round(summary(fit.adj.pi)$coef, 3)
+
+fit.adj.oxi <- epi %>% filter(Treatment == "2mMH2O2") %>% lm(median_adj ~ beta_6.8 + beta_8.10 +
+                                                               beta_6.8:beta_8.10, data = .)
+round(summary(fit.adj.oxi)$coef, 3)
+
+# Conclusion: for the plaeteau, regardless of treatment and basal expression, 800-1000 bps and 600 to 800 bps has no significant interaction
+
+## if comparing IR_6.10, IR_8.10 and WT cannot give the interaction t-test result
 
 ```
 
