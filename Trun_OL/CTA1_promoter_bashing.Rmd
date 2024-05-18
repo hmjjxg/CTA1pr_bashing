@@ -886,7 +886,7 @@ oxi.TrunV.dat %>%
   #scale_y_continuous(limits = c(NA, 22))
 #ggsave("output/TrunV_oxi_norescue.png", width = 6, height = 8)
 ```
-## Basal expression level of OL variants
+## Basal expression level of Truncation variants
 ```{r}
 # Use 0min data from both H2O2 and -Pi treatment; 
 data.TrunV <- bind_rows(data.TrunV.oxi,data.TrunV.pi) %>%  
@@ -1023,7 +1023,7 @@ oxi.TrunV.dect.rel <- oxi.TrunV.dect %>% filter(Time == "90min") %>% group_by(ge
   mutate(rel_red = new_median/wt_red) %>% 
   mutate(Treatment = "2mMH2O2")
 
-TrunV.rel <- bind_rows(pi.TrunV.dect.rel, oxi.TrunV.dect.rel)
+TrunV.rel <- bind_rows(pi.TrunV.dect.rel, oxi.TrunV.dect.rel) %>% mutate(Genotype = factor(Genotype, levels = G.levels))
 
 # plot the maximum relative to wt
 TrunV.rel %>% 
@@ -1079,15 +1079,65 @@ TrunV.rel %>%
 #ggsave("output/TrunV_red_rel_max.png", width = 10.16, height = 2)
 
 ```
-### test epistasis effect between 600 - 800 bps and 800 to 1000 bps
+### test epistasis effect between all IR variants
+```{r}
+# Method 0: combine all IR variants for epistasis test
+IR.epi <- bind_rows(ol.rel, TrunV.rel) %>% select(Genotype, Treatment, median, median_adj = new_median) %>% 
+  mutate(median = median/1000, beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+
+# set up contrast matrix
+IR.epi$beta_2.4 <- with(IR.epi, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10", 0, 1))
+IR.epi$beta_4.6 <- with(IR.epi, ifelse(Genotype == "IR_4.6" | Genotype == "IR_2.10"| Genotype == "IR_4.10", 0, 1))
+IR.epi$beta_6.8 <- with(IR.epi, ifelse(Genotype == "IR_6.8" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                       Genotype == "IR_6.10", 0, 1))
+IR.epi$beta_8.10 <- with(IR.epi, ifelse(Genotype == "IR_8.10" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                       Genotype == "IR_6.10", 0, 1))
+
+IR.epi.pi <- IR.epi %>% filter(Genotype != "PC", Treatment == "0Pi")
+IR.epi.oxi <- IR.epi %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
+
+# lm() fit
+# original data withoud basal deduction
+fit.pi <- IR.epi.pi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+
+round(summary(fit.pi)$coef, 3)
+
+fit.oxi <- IR.epi.oxi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+
+round(summary(fit.oxi)$coef, 3)
+
+# data deduced basal deduction
+fit.pi <- IR.epi.pi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+
+round(summary(fit.pi)$coef, 3)
+
+fit.oxi <- IR.epi.oxi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+
+round(summary(fit.oxi)$coef, 3)
+
+# Conclusion: 
+# 1. absolute data revealed that no epitasis effect for - Pi (only additive effect); for oxidative stress epistatic effect identifed between all every 200 bps CRMs
+
+# 2. Epistasis effect on Induction level: absolute data (basal reduced) revealed epitatic effect between 24 to 46, and 68 to 80 regardless of stress; epistatic effect between 46 to 68 only in H2O2 treatment
+
+# 3. Epistasis effect on basal expression level?
+
+# Note for contrast matrix: set -1 (IRs) vs 0 (WT) and set 0(IRs) vs 1 (WT) give the exact same result.
+```
+
+# epitasis test between 600 - 800 bps and 800 - 1kb bps region
 ```{r}
 # Method I: get IR_6.10, IR_6.8, IR_8.10 and WT for epistasis test
 IR_6810.pi <- ol.rel %>% filter(Genotype %in% c("IR_6.8", "IR_8.10", "WT"), Treatment == "0Pi", Time == "240min")
 
 IR_6810.oxi <- ol.rel %>% filter(Genotype %in% c("IR_6.8", "IR_8.10", "WT"), Treatment == "2mMH2O2", Time == "90min")
 
-IR_610.pi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "WT"), Treatment == "0Pi", Time == "240min")
-IR_610.oxi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "WT"), Treatment == "2mMH2O2", Time == "90min")
+IR_610.pi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "IR_8.10", "WT"), Treatment == "0Pi", Time == "240min")
+IR_610.oxi <- TrunV.rel %>% filter(Genotype %in% c("IR_6.10", "IR_8.10", "WT"), Treatment == "2mMH2O2", Time == "90min")
 
 epi.pi <- bind_rows(IR_6810.pi, IR_610.pi)
 epi.oxi <- bind_rows(IR_6810.oxi, IR_610.oxi)
@@ -1123,9 +1173,9 @@ fit.adj.oxi <- epi %>% filter(Treatment == "2mMH2O2") %>% lm(median_adj ~ beta_6
                                                                beta_6.8:beta_8.10, data = .)
 round(summary(fit.adj.oxi)$coef, 3)
 
-# Conclusion: for the plaeteau, regardless of treatment and basal expression, 800-1000 bps and 600 to 800 bps has no significant interaction
+# Conclusion: (Without add in 8V data, 8V does not agree perfectly with 10OL) for the plaeteau, regardless of treatment and basal expression, 800-1000 bps and 600 to 800 bps has no significant interaction; with 8V and 10OL, they do have an epistasis effect.
 
-## if comparing IR_6.10, IR_8.10 and WT cannot give the interaction t-test result
+#
 
 ```
 
