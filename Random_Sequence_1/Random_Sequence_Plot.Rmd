@@ -76,6 +76,7 @@ scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
                 axis.title = element_text(size = rel(1)), 
                 axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
 
+
 bar.list <- list(
   stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
   scale_size_manual(values = c(0.8, 1.5), guide = "none"),
@@ -89,9 +90,26 @@ bar.list <- list(
         legend.title = element_text(),
         axis.title = element_text(size = rel(1)), 
         #axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=0.4), axis.text = element_text(size = rel(1)),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
   )
 )
+
+bar.list.no.stat <- list(
+  #stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+  
 
 ```
 
@@ -146,6 +164,7 @@ Get the subset of no Pi data
 ```{r}
 # recode the genotype
 levels <- c(`WT` = "wt", `IS_2.4` = "RS1_24",  `IS_2.6` = "RS1_26", `IS_2.8` = "RS1_28", `IS_2.10` = "RS1_210")
+G.levels <- c("WT", "IS_2.4", "IS_2.6", "IS_2.8", "IS_2.10")
 
 pi.dat <- data %>% 
   filter(treat == "0Pi") %>%  # , HB_strain != "yH298"
@@ -204,7 +223,7 @@ rs.data %>%
 #ggsave("output/WT.png", width = 6, height = 6.6)
 
 ```
-## Basal expression level of OL variants
+## Basal expression level of RS variants
 ```{r}
 # Use 0min data from both H2O2 and -Pi treatment; 
 data.RS <- data %>% filter(treat != "Ctrl")%>%  
@@ -213,7 +232,8 @@ data.RS <- data %>% filter(treat != "Ctrl")%>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate) %>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
 ## seperately plot the basal level for 0mM Pi and 2mM H2O2
@@ -227,8 +247,81 @@ data.RS %>%
   theme(legend.position=c(0.75,0.85)) +
   xlab("Random Sequence(RS) Variants, 0 min") +
   facet_grid(. ~ Treatment) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position="none")
 #ggsave("output/RS1_seperate_basal.png", width = 6, height = 8)
+
+## plot the 0mM Pi and 2mM H2O2 basal side by side
+data.RS %>% 
+  filter(!is.na(new_median), Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = new_median, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 4)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 3, col = "gray", linetype = "dashed") +
+  xlab("Internal swap (IS) variants") +
+  ylab("Basal exp (a.u.)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
+#ggsave("output/IS_basal_bar.png", width = 10.16, height = 2)
+
+# calculate relative basal expression changes to wt
+rs.bas.rel.pi <- data.RS %>% 
+          filter(!is.na(new_median), Time == "0min", Treatment == "0Pi") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "0Pi")
+
+rs.bas.rel.oxi <- data.RS %>% 
+          filter(!is.na(new_median), Time == "0min", Treatment == "2mMH2O2") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "2mMH2O2")
+
+rs.bas.rel <- bind_rows(rs.bas.rel.oxi, rs.bas.rel.pi)
+rs.bas.rel.save <- rs.bas.rel %>% select(Time, genotype, Genotype, rel_base, Treatment)
+write.csv(rs.bas.rel.save, file = "output/rs_bas_rel.csv", row.names = F)
+write.csv(rs.bas.rel.save, file = "../Trun_OL/input/rs_bas_rel.csv", row.names = F)
+
+rs.bas.rel %>% 
+  filter(!is.na(rel_base), Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = rel_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal swap (IS) variants") +
+  ylab("Basal exp (a.u.)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/IS_basal_rel_bar.png", width = 10.16, height = 2)
 
 ```
 ## Plateau/maximum expression Level of OL variants (V1)
@@ -247,7 +340,8 @@ pi.dect <- merge(pi.dat, pi.basal, by = c("Strain", "replicate","genotype")) %>%
   mutate(new_median =(median-basal)/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   mutate(genotype = factor(genotype, levels = levels)) %>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 oxi.dect <- merge(h2o2.dat, oxi.basal, by = c("Strain", "replicate","genotype")) %>% 
   select(Time, replicate, genotype, median, basal) %>%
@@ -255,7 +349,8 @@ oxi.dect <- merge(h2o2.dat, oxi.basal, by = c("Strain", "replicate","genotype"))
   mutate(new_median =(median-basal)/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   mutate(genotype = factor(genotype, levels = levels)) %>% 
-  arrange(new_time, genotype, replicate)
+  arrange(new_time, genotype, replicate) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels))
 
 # timecourse deduct curve
 pi.dect %>%
@@ -301,6 +396,84 @@ oxi.dect %>%
   xlab("Random Sequence(RS) Variants, 2mM H2O2, 90 min")
 #ggsave("output/RS1_deduct_Oxi_90.png", width = 6, height = 8)
 
+# calculate maximum plateau relative to wt
+pi.rs.dect.rel <- pi.dect %>% filter(Time == "240min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "0Pi")
+  
+oxi.rs.dect.rel <- oxi.dect %>% filter(Time == "90min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "2mMH2O2")
+
+
+rs.rel <- bind_rows(pi.rs.dect.rel, oxi.rs.dect.rel) %>% mutate(Genotype = factor(Genotype, levels = G.levels))
+
+# plot the maximum relative to wt
+rs.rel %>% 
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = Genotype, y = rel_ori, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Max induction (relative to wt,ori)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/OL_ori_rel_max.png", width = 10.16, height = 2)
+
+
+
+rs.rel %>% 
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = Genotype, y = rel_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
+#ggsave("output/OL_red_rel_max.png", width = 10.16, height = 2)
+
+rs.rel.plateau <- rs.rel %>% select(Time, Genotype, genotype, Treatment, rel_ori, rel_red)
+write.csv(rs.rel.plateau, file = "output/rs_plateau.csv", row.names = F)
+write.csv(rs.rel.plateau, file = "../Trun_OL/input/rs_plateau.csv", row.names = F)
 ```
 ### slope/differetiation of the loess curve
 ```{r}

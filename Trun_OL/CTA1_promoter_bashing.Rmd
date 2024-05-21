@@ -291,6 +291,52 @@ data.ol %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
 #ggsave("output/OL_basal_bar.png", width = 10.16, height = 2)
 
+# calculate relative basal expression changes to wt
+ir.bas.rel.pi <- data.ol %>%
+          filter(!is.na(new_median), genotype != "rescue", Time == "0min", Treatment == "0Pi") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "0Pi")
+
+ir.bas.rel.oxi <- data.ol %>% 
+          filter(!is.na(new_median), genotype != "rescue", Time == "0min", Treatment == "2mM") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "2mMH2O2")
+
+ir.bas.rel <- bind_rows(ir.bas.rel.oxi, ir.bas.rel.pi)
+ir.bas.rel.save <- ir.bas.rel %>% select(Time, genotype, Genotype, rel_base)
+
+
+ir.bas.rel %>% 
+  filter(!is.na(rel_base), Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = rel_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal swap (IS) variants") +
+  ylab("Basal exp (a.u.)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/Ir_basal_rel_bar.png", width = 10.16, height = 2)
+
 ```
 ## Plateau/maximum expression Level of OL variants (V1)
 The logic is cancel out the impact of basal expression level of each variants. To do so, minus the 0 min basal expression level from each variants, then plot the deduced data at all tp and the selected tp.
@@ -685,6 +731,9 @@ ol.slope %>%
 #ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
 
 
+
+
+
 ```
 
 #### Get the loess curve fitting for the timecourse data
@@ -932,6 +981,53 @@ data.TrunV %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
 #ggsave("output/TrunV_seperate_basal.png", width = 6, height = 8)
 
+
+# calculate relative basal expression changes to wt
+TrunV.bas.rel.pi <- data.TrunV %>%
+          filter(!is.na(new_median), genotype != "rescue", Time == "0min", Treatment == "0Pi") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "0Pi")
+
+TrunV.bas.rel.oxi <- data.TrunV %>% 
+          filter(!is.na(new_median), genotype != "rescue", Time == "0min", Treatment == "H2O2") %>% 
+          group_by(genotype) %>% 
+          mutate(new_mean_base = mean(median)) %>% 
+          mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+          mutate(rel_base = median/wt_basal) %>% 
+          mutate(Treatment = "2mMH2O2")
+
+TrunV.bas.rel <- bind_rows(TrunV.bas.rel.oxi, TrunV.bas.rel.pi)
+TrunV.bas.rel.save <- TrunV.bas.rel %>% select(Time, genotype, Genotype, rel_base)
+
+
+TrunV.bas.rel %>% 
+  filter(!is.na(rel_base), Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = rel_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal swap (IS) variants") +
+  ylab("Basal exp (a.u.)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
+#ggsave("output/TrunV_basal_rel_bar.png", width = 10.16, height = 2)
+
 ```
 
 
@@ -1080,10 +1176,101 @@ TrunV.rel %>%
 
 ```
 ### test epistasis effect between all IR variants
+# Basal
+```{r}
+# combine IS and IR variants for epistasis test
+rs.bas.rel <- read.csv("input/rs_bas_rel.csv")
+bas.rel <- bind_rows(ir.bas.rel, TrunV.bas.rel) %>% select(Time, genotype, Genotype, rel_base, Treatment) %>% bind_rows(.,rs.bas.rel) %>% mutate(beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+
+bas.rel$beta_2.4 <- with(bas.rel, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10" | Genotype == "IS_2.4" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8" | Genotype == "IS_2.10", 0, 1))
+bas.rel$beta_4.6 <- with(bas.rel, ifelse(Genotype == "IR_4.6" | Genotype == "IR_2.10"| Genotype == "IR_4.10" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+bas.rel$beta_6.8 <- with(bas.rel, ifelse(Genotype == "IR_6.8" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10"| Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+bas.rel$beta_8.10 <- with(bas.rel, ifelse(Genotype == "IR_8.10" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10" | Genotype == "IS_2.10", 0, 1))
+
+
+bas.rel.pi <- bas.rel%>% filter(Genotype != "PC", Treatment == "0Pi")
+bas.rel.oxi <- bas.rel %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
+
+# lm() fit
+fit.pi <- bas.rel.pi %>% lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.pi)$coef, 3)
+
+
+fit.oxi <- bas.rel.oxi %>% lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.oxi)$coef, 3)
+
+# combine - Pi and H2O2
+fit.all <- bas.rel %>% lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.all)$coef, 3)
+
+## OL+TrunV+WT
+fit.ir <- bas.rel %>% filter(!(Genotype %in% c("IS_2.10", "IS_2.8", "IS_2.6", "IS_2.4"))) %>% 
+                      lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 + 
+                           beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.ir)$coef, 3)
+
+## RS+OL+WT
+fit.rs <- bas.rel %>% filter(!(genotype %in% c("2V", "4V", "6V", "8V"))) %>% 
+                      lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 + 
+                           beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.rs)$coef, 3)
+
+
+```
+
+# Plateau
+```{r}
+# combine IS and IR variants for epistasis test
+rs.plateau <- read.csv("input/rs_plateau.csv")
+ir.plateau <- bind_rows(ol.rel, TrunV.rel) %>% select(Time, Genotype, genotype, Treatment, rel_ori, rel_red)
+plateau <- bind_rows(ir.plateau, rs.plateau) %>% mutate(beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+
+plateau$beta_2.4 <- with(plateau, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10" | Genotype == "IS_2.4" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8" | Genotype == "IS_2.10", 0, 1))
+plateau$beta_4.6 <- with(plateau, ifelse(Genotype == "IR_4.6" | Genotype == "IR_2.10"| Genotype == "IR_4.10" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+plateau$beta_6.8 <- with(plateau, ifelse(Genotype == "IR_6.8" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10"| Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+plateau$beta_8.10 <- with(plateau, ifelse(Genotype == "IR_8.10" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10" | Genotype == "IS_2.10", 0, 1))
+
+
+plateau.pi <- plateau %>% filter(Genotype != "PC", Treatment == "0Pi")
+plateau.oxi <- plateau %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
+
+# lm() fit
+# original data w/o basal deduction
+fit.pi <- plateau.pi %>% lm(rel_ori ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.pi)$coef, 3)
+
+
+fit.oxi <- plateau.oxi %>% lm(rel_ori ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.oxi)$coef, 3)
+
+# with deduction
+fit.pi <- plateau.pi %>% lm(rel_red ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.pi)$coef, 5)
+
+fit.oxi <- plateau.oxi %>% lm(rel_red ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+
+round(summary(fit.oxi)$coef, 5)
+```
+
 ```{r}
 # Method 0: combine all IR variants for epistasis test
-IR.epi <- bind_rows(ol.rel, TrunV.rel) %>% select(Genotype, Treatment, median, median_adj = new_median) %>% 
-  mutate(median = median/1000, beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+IR.epi <- bind_rows(ol.rel, TrunV.rel) %>% select(Genotype, Treatment, median, median_adj = new_median, genotype) %>% 
+  mutate(median = median/1000, beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1, TrunV_variable = 0)
 
 # set up contrast matrix
 IR.epi$beta_2.4 <- with(IR.epi, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10", 0, 1))
@@ -1092,29 +1279,31 @@ IR.epi$beta_6.8 <- with(IR.epi, ifelse(Genotype == "IR_6.8" | Genotype == "IR_2.
                                        Genotype == "IR_6.10", 0, 1))
 IR.epi$beta_8.10 <- with(IR.epi, ifelse(Genotype == "IR_8.10" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
                                        Genotype == "IR_6.10", 0, 1))
+IR.epi$TrunV_variable <- with(IR.epi, ifelse(genotype == "2V" | genotype == "4V"| genotype == "6V"| 
+                                       genotype == "8V", 1, 0))
 
 IR.epi.pi <- IR.epi %>% filter(Genotype != "PC", Treatment == "0Pi")
 IR.epi.oxi <- IR.epi %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
 
 # lm() fit
 # original data withoud basal deduction
-fit.pi <- IR.epi.pi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+fit.pi <- IR.epi.pi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 + TrunV_variable +
                              beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
 
 round(summary(fit.pi)$coef, 3)
 
-fit.oxi <- IR.epi.oxi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+fit.oxi <- IR.epi.oxi %>% lm(median ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10  + TrunV_variable +
                              beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
 
 round(summary(fit.oxi)$coef, 3)
 
 # data deduced basal deduction
-fit.pi <- IR.epi.pi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+fit.pi <- IR.epi.pi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10  + TrunV_variable +
                              beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
 
 round(summary(fit.pi)$coef, 3)
 
-fit.oxi <- IR.epi.oxi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+fit.oxi <- IR.epi.oxi %>% lm(median_adj ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10  + TrunV_variable +
                              beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
 
 round(summary(fit.oxi)$coef, 3)
