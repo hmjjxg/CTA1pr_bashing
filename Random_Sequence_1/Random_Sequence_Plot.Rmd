@@ -483,7 +483,7 @@ write.csv(rs.rel.plateau, file = "../Trun_OL/input/rs_plateau.csv", row.names = 
 check <- pi.dat %>%  group_by(Genotype) %>% summarise(Strain = paste(unique(Strain), collapse = ', '))
 
 # Can play the the genotype name to plot the diff(loess model)
-test.pi <- pi.dat %>% filter(Genotype == "RS1 200-400") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+test.pi <- pi.dat %>% filter(Genotype == "IS_2.4") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
 
 x <- 0:240
 px <- predict(test.pi, newdata = x)
@@ -498,7 +498,7 @@ plot(x[-1], px1, main="diff(loess model)")
 abline(v=which.max(px1), col="red")
 
 # get the max slope and the respective tp for each sample into a dataframe: - Pi 
-pi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.slope", "Genotype"))))
+pi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -521,16 +521,18 @@ for (x in names(levels)) {
     }}}
 
 
-pi.slope <- pi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000"))) 
+pi.slope <- pi.slope %>% 
+  mutate(Genotype = factor(Genotype, levels =G.levels)) %>% 
+  mutate(Treatment = "0Pi")
 
 # plot the slope of the curve: - Pi
 pi.slope %>% 
-  filter(!is.na(pi.slope)) %>% 
-  ggplot(aes(x = Genotype, y = pi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope)) %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.75,0.9)) +
+  theme(legend.position="none") +
   scale_color_viridis_d(limits = names(levels), option = "rocket") +
   ylab("Maximum Slope (loess fit)") +
   xlab("Random Sequence(RS)  Variants, 0mM Pi")
@@ -538,7 +540,7 @@ ggsave("output/RS1_slope_0Pi.png", width = 6, height = 8)
 
 
 # get the max slope and the respective tp for each sample into a dataframe: 2mM H2O2 
-oxi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("oxi.slope", "Genotype"))))
+oxi.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -561,20 +563,68 @@ for (x in names(levels)) {
     }}}
 
 
-oxi.slope <- oxi.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT", "RS1 200-400", "RS1 200-600", "RS1 200-800", "RS1 200-1000"))) 
+oxi.slope <- oxi.slope %>% 
+  mutate(Genotype = factor(Genotype, levels =G.levels)) %>% 
+  mutate(Treatment = "2mMH2O2")
 
 # plot the slope of the curve: - Pi
 oxi.slope %>% 
-  filter(!is.na(oxi.slope), Genotype != "PC") %>% 
-  ggplot(aes(x = Genotype, y = oxi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.75,0.9)) +
+  theme(legend.position= "none") +
   scale_color_viridis_d(limits = names(levels), option = "rocket") +
   ylab("Maximum Slope (loess fit)") +
   xlab("Random Sequence(RS) Variants, 2mM H2O2")
 ggsave("output/RS1_slope_oxi.png", width = 6, height = 8)
+
+
+# get the maximum slope relative to the wt
+pi.slope.rel <- pi.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+oxi.slope.rel <- oxi.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+# get the combined slope
+rs.slope <- bind_rows(pi.slope.rel, oxi.slope.rel)
+rs.slope.store <- rs.slope %>% select(slope, Genotype, Treatment, rel_slope)
+write.csv(rs.slope.store, file = "output/rs_slope_rel.csv", row.names = F)
+write.csv(rs.slope.store, file = "../Trun_OL/input/rs_slope_rel.csv", row.names = F)
+
+# plot the maximum slope relative to wt
+rs.slope %>% 
+  filter(!is.na(rel_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal swap (IS) variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
+#ggsave("output/IS_slope_rel_max.png", width = 10.16, height = 2)
 
 ```
 

@@ -1375,7 +1375,7 @@ round(summary(fit.adj.oxi)$coef, 3)
 check.TrunV <- pi.TrunV.dat %>%  group_by(Genotype) %>% summarise(Strain = paste(unique(Strain), collapse = ', '))
 
 # Can play the the genotype name to plot the diff(loess model)
-test.pi <- pi.TrunV.dat %>% filter(Genotype == "4V") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
+test.pi <- pi.TrunV.dat %>% filter(Genotype == "IR_4.10") %>% loess(formula = new_median ~ new_time, span = 0.75, degree = 2) 
 
 x <- 0:240
 px <- predict(test.pi, newdata = x)
@@ -1390,7 +1390,7 @@ plot(x[-1], px1, main="diff(loess model)")
 abline(v=which.max(px1), col="red")
 
 # get the max slope and the respective tp for each sample into a dataframe: - Pi 
-pi.TrunV.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("pi.slope", "Genotype"))))
+pi.TrunV.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -1413,16 +1413,18 @@ for (x in names(levels)) {
     }}}
 
 
-pi.TrunV.slope <- pi.TrunV.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT","PC", "2V", "4V","6V","8V"))) 
+pi.TrunV.slope <- pi.TrunV.slope %>% 
+  mutate(Genotype = factor(Genotype, levels =G.levels)) %>% 
+  mutate(Treatment = "0Pi") 
 
 # plot the slope of the curve: - Pi
 pi.TrunV.slope %>% 
-  filter(!is.na(pi.slope), Genotype != "PC") %>% 
-  ggplot(aes(x = Genotype, y = pi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.85,0.9)) +
+  theme(legend.position="none") +
   scale_color_viridis_d(limits = names(levels.norescue), option = "plasma") +
   theme(legend.position=c(0.85,0.9)) +
   ylab("Maximum Slope (loess fit)") +
@@ -1431,7 +1433,7 @@ pi.TrunV.slope %>%
 
 
 # get the max slope and the respective tp for each sample into a dataframe: 2mM H2O2 
-oxi.TrunV.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("oxi.slope", "Genotype"))))
+oxi.TrunV.slope <- data.frame(matrix(ncol=2,nrow=0, dimnames=list(NULL, c("slope", "Genotype"))))
 row_cnt = 1
 col_cnt = 1
 for (x in names(levels)) {
@@ -1454,22 +1456,203 @@ for (x in names(levels)) {
     }}}
 
 
-oxi.TrunV.slope <- oxi.TrunV.slope %>% mutate(Genotype = factor(Genotype, levels = c("WT","PC", "2V","4V","6V", "8V"))) 
+oxi.TrunV.slope <- oxi.TrunV.slope %>% 
+  mutate(Genotype = factor(Genotype, levels =G.levels)) %>% 
+  mutate(Treatment = "2mMH2O2")
 
 # plot the slope of the curve: - Pi
 oxi.TrunV.slope %>% 
-  filter(!is.na(oxi.slope), Genotype != "PC") %>% 
-  ggplot(aes(x = Genotype, y = oxi.slope, color = Genotype)) + bar.list +
+  filter(!is.na(slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = slope, color = Genotype)) + bar.list +
   geom_boxplot() +
   stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
   geom_jitter(width = 0.2) +
-  theme(legend.position=c(0.85,0.9)) +
+  theme(legend.position="none") +
   scale_color_viridis_d(limits = names(levels.norescue), option = "plasma") +
   ylab("Maximum Slope (loess fit)") +
   xlab("Truncation Variants, 2mM H2O2")
 #ggsave("output/TrunV_slope_oxi.png", width = 6, height = 8)
 
+
+# get the maximum slope relative to the wt
+pi.slope.rel <- pi.TrunV.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+oxi.slope.rel <- oxi.TrunV.slope %>% filter(!is.na(slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = slope/wt_slope) 
+
+# get the combined slope
+TrunV.slope <- bind_rows(pi.slope.rel, oxi.slope.rel)
+
+# plot the maximum slope relative to wt
+TrunV.slope %>% 
+  filter(!is.na(rel_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
+#ggsave("output/TrunV_slope_rel_max.png", width = 10.16, height = 2)
+
 ```
+
+#statstical test for max slope
+```{r}
+rs.slope <- read.csv("input/rs_slope_rel.csv")
+slope.rel <- bind_rows(TrunV.slope, ol.slope) %>% select(slope, rel_slope, Genotype, Treatment) %>% bind_rows(.,rs.slope) %>% 
+            mutate(beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+
+slope.rel$beta_2.4 <- with(slope.rel, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10" | Genotype == "IS_2.4" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8" | Genotype == "IS_2.10", 0, 1))
+slope.rel$beta_4.6 <- with(slope.rel, ifelse(Genotype == "IR_4.6" | Genotype == "IR_2.10"| Genotype == "IR_4.10" |
+                                         Genotype == "IS_2.6" | Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+slope.rel$beta_6.8 <- with(slope.rel, ifelse(Genotype == "IR_6.8" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10"| Genotype == "IS_2.8"| Genotype == "IS_2.10", 0, 1))
+slope.rel$beta_8.10 <- with(slope.rel, ifelse(Genotype == "IR_8.10" | Genotype == "IR_2.10"| Genotype == "IR_4.10"| 
+                                         Genotype == "IR_6.10" | Genotype == "IS_2.10", 0, 1))
+
+
+slope.rel.pi <- slope.rel %>% filter(Genotype != "PC", Treatment == "0Pi")
+slope.rel.oxi <- slope.rel %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
+
+# lm() fit
+fit.pi <- slope.rel.pi %>% lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.pi)$coef, 3)
+
+fit.oxi <- slope.rel.oxi %>% lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.oxi)$coef, 3)
+```
+#Plot regulatory information loss with all variants
+```{r}
+#new.levels <- c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")
+new.levels <- c("WT", "IR_8.10", "IR_6.8", "IR_4.6", "IR_2.4", "IS_2.4")
+
+new.plateau <- plateau %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")) %>% 
+  select(Genotype, Time, genotype, rel_ori,rel_red, Treatment) %>% 
+  mutate(loss_ori = 1 - rel_ori, loss_red = 1 - rel_red) %>% 
+  mutate(Genotype = factor(Genotype, levels = new.levels))
+
+new.slope <- slope.rel %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")) %>% 
+  select(Genotype, rel_slope, Treatment) %>% 
+  mutate(loss_slope = 1 - rel_slope) %>% 
+  mutate(Genotype = factor(Genotype, levels = new.levels))
+
+
+new.bas <- bas.rel %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")) %>% 
+  select(Genotype, Time, rel_base, Treatment,genotype) %>% 
+  mutate(loss_base = 1 - rel_base) %>% 
+  mutate(Genotype = factor(Genotype, levels = new.levels))
+  
+
+# plot regulatory infomation loss
+
+new.plateau %>% 
+  filter(!is.na(loss_red), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(-0.25, 1.0)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/plateau_loss.png", width = 7.2, height = 2)
+
+new.slope %>% 
+  filter(!is.na(loss_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(-0.25, 1.0)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max slope loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/slope_loss.png", width = 7.2, height = 2)
+
+
+new.bas %>% 
+  filter(!is.na(loss_base), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(-0.25, 1.0)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Relative basal exp loss") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
+#ggsave("output/base_loss.png", width = 10.16, height = 2)
+
+```
+
+
 
 ```{r}
 ##### 2mM H2O2 OL timepoint plot function
