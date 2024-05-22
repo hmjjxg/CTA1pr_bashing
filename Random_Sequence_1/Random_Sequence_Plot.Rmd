@@ -41,6 +41,27 @@ p.timecourse <- list(
   )
 )
 
+p2.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 20),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 5), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(5)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(5)),
+  )
+)
+
 
 mean.timecourse <- list(
   stat_summary(fun = "mean", geom = "point", size = 3),
@@ -216,13 +237,47 @@ rs.data <- data %>%
     
 rs.data %>% 
   filter(!is.na(new_median), Genotype == "WT") %>% 
-  ggplot(aes(x = new_time, y = new_median, color = treat, shape = treat)) + p.timecourse +
+  ggplot(aes(x = new_time, y = new_median, color = treat, shape = treat)) + p2.timecourse +
   scale_color_manual(values = c("#674ea7ff","#e69138ff","#666666ff"))  +
   scale_shape_manual(values = c(16, 17, 15)) +
   xlab("Time (min)")
 #ggsave("output/WT.png", width = 6, height = 6.6)
 
 ```
+```{r}
+p2.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 5),
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 20),
+  theme(legend.position="top",
+        legend.justification = "center",
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 1,size = 20), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+rs.data %>% 
+  filter(!is.na(new_median), Genotype == "WT") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = treat, shape = treat),labels = c("-Pi", bquote(~H[2]*O[2]), "Mock")) +  
+  p2.timecourse +
+  scale_color_manual(values = c("#674ea7ff","#e69138ff","#666666ff"),labels = c("-Pi", bquote(~H[2]*O[2]), "Mock"))  +
+  scale_shape_manual(values = c(16, 17, 15),labels = c("-Pi", bquote(~H[2]*O[2]), "Mock")) +
+  guides(color = guide_legend(nrow = 1, title = NULL), shape = guide_legend(nrow = 1, override.aes = list(size = 4), title = NULL)) +
+  xlab("Time (min)")
+ggsave("output/WT.png", width = 7, height = 7)
+```
+
 ## Basal expression level of RS variants
 ```{r}
 # Use 0min data from both H2O2 and -Pi treatment; 

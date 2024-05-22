@@ -16,7 +16,6 @@ library(ggtext)
 #library(broom)
 library(cowplot)
 library(ggpattern)
-#Sys.setenv(LANG = "en")
 ```
 
 ## Goal
@@ -280,7 +279,7 @@ data.ol %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mM` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 10)) +
   #geom_jitter(width = 0.3) +
@@ -289,7 +288,7 @@ data.ol %>%
   ylab("Basal exp (a.u.)") +
   guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
-#ggsave("output/OL_basal_bar.png", width = 10.16, height = 2)
+ggsave("output/OL_basal_bar.png", width = 10.16, height = 2)
 
 # calculate relative basal expression changes to wt
 ir.bas.rel.pi <- data.ol %>%
@@ -326,16 +325,16 @@ ir.bas.rel %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
-  xlab("Internal swap (IS) variants") +
-  ylab("Basal exp (a.u.)") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Basal exp") +
   guides(fill = guide_legend(nrow = 1)) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"))
-#ggsave("output/Ir_basal_rel_bar.png", width = 10.16, height = 2)
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
+ggsave("output/Ir_basal_rel_bar.png", width = 10.16, height = 2)
 
 ```
 ## Plateau/maximum expression Level of OL variants (V1)
@@ -471,18 +470,18 @@ ol.rel %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("Internal removal (IR) variants") +
   ylab("Plateau") +
-  guides(fill = guide_legend(nrow = 1)) +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
-#ggsave("output/OL_red_rel_max.png", width = 10.16, height = 2)
+ggsave("output/OL_red_rel_max.png", width = 10.16, height = 2)
 
   
 ```
@@ -719,7 +718,7 @@ ol.slope %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
   #geom_jitter(width = 0.3) +
@@ -728,7 +727,7 @@ ol.slope %>%
   ylab("Max Slope") +
   guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
-#ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
+ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
 
 
 
@@ -1017,7 +1016,7 @@ TrunV.bas.rel %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
   #geom_jitter(width = 0.3) +
@@ -1505,7 +1504,7 @@ TrunV.slope %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
   #geom_jitter(width = 0.3) +
@@ -1514,7 +1513,7 @@ TrunV.slope %>%
   ylab("Max Slope") +
   guides(fill = guide_legend(nrow = 1)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
-#ggsave("output/TrunV_slope_rel_max.png", width = 10.16, height = 2)
+ggsave("output/TrunV_slope_rel_max.png", width = 10.16, height = 2)
 
 ```
 
@@ -1582,16 +1581,16 @@ new.plateau %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(-0.25, 1.0)) +
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Plateau loss \n (Relative to WT)") +
-  guides(fill = guide_legend(nrow = 1)) +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= c(0.02, 0.9),
         axis.title.x=element_blank())
@@ -1611,7 +1610,7 @@ new.slope %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(-0.25, 1.0)) +
   #geom_jitter(width = 0.3) +
@@ -1639,7 +1638,7 @@ new.bas %>%
                    width=0.8) + 
   scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
   scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
-  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Red", linewidth = 1, position = 
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(-0.25, 1.0)) +
   #geom_jitter(width = 0.3) +
