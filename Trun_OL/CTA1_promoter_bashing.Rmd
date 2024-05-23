@@ -72,7 +72,7 @@ scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
                 scale_x_continuous(breaks = seq(0,1.0,0.25)),
                 scale_size_manual(values = c(0.8, 1.5), guide = "none"),
                 expand_limits(x = 0, y = 0),
-                theme_cowplot(line_size = 0.7, font_size = 14),
+                theme_cowplot(line_size = 0.7, font_size = 20),
                 theme(legend.position=c(0.02,0.82),
                 legend.text = element_text(face = 3), 
                 legend.title = element_text(),
@@ -1636,21 +1636,321 @@ new.bas %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
   geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
-  scale_y_continuous(limits = c(-0.25, 1.0)) +
+  scale_y_continuous(limits = c(-0.5, 1.0)) +
   #geom_jitter(width = 0.3) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
-  ylab("Relative basal exp loss") +
-  guides(fill = guide_legend(nrow = 1)) +
-  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
-#ggsave("output/base_loss.png", width = 10.16, height = 2)
+  ylab("Basal exp loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/base_loss.png", width = 10.16, height = 2)
+
+```
+# basal exp loss (distal more important thant proximal)
+```{r}
+distal.levels <- c("WT", "IR_8.10", "IR_6.8", "IR_6.10","IS_2.6","IR_4.6", "IR_2.4", "IS_2.4")
+
+new.bas <- bas.rel %>% filter(Genotype %in% distal.levels) %>% 
+  select(Genotype, Time, rel_base, Treatment,genotype) %>% 
+  mutate(loss_base = 1 - rel_base) %>% 
+  mutate(Genotype = factor(Genotype, levels = distal.levels))
+
+new.bas %>% 
+  filter(!is.na(loss_base), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(-0.5, 1.0)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal exp loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+#ggsave("output/base_loss_distal.png", width = 10.16, height = 2)
+
+```
+#define scatter plot settings
+```{r}
+# Define scatter settings
+scatter <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  scale_y_continuous(breaks = seq(0, 1.0, 0.25)),
+  scale_x_continuous(breaks = seq(0, 800, 200)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  expand_limits(x = 0, y = 0),
+  theme_cowplot(line_size = 0.7, font_size = 20),
+  theme(
+    legend.position = c(0.65, 0.5),
+    legend.text = element_text(face = 3, size = 14), 
+    legend.title = element_blank(), # Hide the legend title
+    axis.title = element_text(size = rel(1)), 
+    axis.text.x = element_text(hjust = 0.5), 
+    axis.text = element_text(size = rel(1))
+  )
+)
 
 ```
 
+
+# plot 3 features vs max distance to core promoter
+```{r}
+# Basal
+distance <- bas.rel %>% select(genotype, Genotype) %>% unique(., by = "genotype") %>% mutate(dis_delta = 200, dis_ave = 200)
+
+distance$dis_delta <- with(distance, ifelse(Genotype == "IS_2.6" | Genotype == "IR_6.10", 400,
+                                   ifelse(Genotype == "IS_2.8" | Genotype == "IR_4.10", 600,
+                                   ifelse(Genotype == "IS_2.10" | Genotype == "IR_2.10", 800, dis_delta))))
+
+distance$dis_ave <- with(distance, ifelse(Genotype == "IR_2.4" | Genotype == "IS_2.4", 200,
+                                   ifelse(Genotype == "IS_2.6" , 300,      
+                                   ifelse(Genotype == "IR_4.6" | Genotype == "IS_2.8", 400,
+                                   ifelse(Genotype == "IR_2.10"| Genotype == "IS_2.10", 500,    
+                                   ifelse(Genotype == "IR_6.8" | Genotype == "IR_4.10", 600,
+                                   ifelse(Genotype == "IR_6.10" , 700,
+                                   ifelse(Genotype == "IR_8.10" , 800, dis_ave))))))))
+
+dis.base <- bas.rel %>% select(genotype, Genotype, Treatment, rel_base) %>% merge(., distance, by = c("genotype","Genotype"))
+
+# Filter data and create the plot
+filtered_data <- dis.base %>% filter(Genotype != "WT")
+
+# set color
+treatment_color <- c("#b4a7d6ff","#f6b26bff")
+
+## Calculate the linear model for average length changes
+model <- lm(rel_base ~ dis_delta, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# adjust size
+scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                scale_y_continuous(breaks = seq(0,1.0,0.25)),
+                scale_x_continuous(breaks = seq(0, 800, 200)),
+                scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                expand_limits(x = 0, y = 0),
+                theme_cowplot(line_size = 0.7, font_size = 20),
+                theme(legend.position=c(0.02,0.82),
+                legend.text = element_text(face = 3), 
+                legend.title = element_text(),
+                axis.title = element_text(size = rel(1)), 
+                axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_delta, y = rel_base, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color) +
+  labs(x = "the length of flanking region being changed (bps)", y = "Basal exp \n (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_base) * 0.9,
+           label = paste("R² = ", round(r_squared, 2)), size = 5, color = "black") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_base) * 0.8,
+           label = equation, size = 5, color = "black")
+
+# Print the plot
+print(plot)
+
+# Save the plot
+#ggsave("output/base_dis_delta.png", plot = plot, width = 7, height = 7)
+
+
+## Calculate the linear model for average distance to core promoter
+model <- lm(rel_base ~ dis_ave, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_ave, y = rel_base, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color, labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  guides(color = guide_legend(title = NULL)) + 
+  labs(x = "Distance to the core promoter (bps)", y = "Basal exp (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_ave) * 0.8, y = max(filtered_data$rel_base) * 0.95,
+           label = paste("R² = ", round(r_squared, 2)), size = 8, color = "black", hjust = 1, vjust = 1.5)
+
+# Print the plot
+print(plot)
+
+# Save the plot
+ggsave("output/base_dis_ave.png", plot = plot, width = 4.8, height = 7.6)
+
+```
+#Induction relationship to core promoter
+#slope
+```{r}
+dis.slope <- slope.rel %>% select(Genotype, Treatment, rel_slope) %>% merge(., distance, by = c("Genotype"))
+
+# Filter data and create the plot
+filtered_data <- dis.slope %>% filter(Genotype != "WT")
+
+
+## Calculate the linear model for changed length of variants versus slope
+model <- lm(rel_slope ~ dis_delta, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_delta, y = rel_slope, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = seq(0, 800, 200)) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color) +
+  labs(x = "the length of flanking region being changed (bps)", y = "Basal exp \n (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_slope) * 0.9,
+           label = paste("R² = ", round(r_squared, 2)), size = 5, color = "black") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_slope) * 0.8,
+           label = equation, size = 5, color = "black")
+
+# Print the plot
+print(plot)
+
+# Save the plot
+#ggsave("output/slope_dis_delta.png", plot = plot, width = 7, height = 7)
+
+
+## Calculate the linear model for average distance to core promoter
+model <- lm(rel_slope ~ dis_ave, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_ave, y = rel_slope, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = seq(0, 800, 200)) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color, labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  guides(color = guide_legend(title = NULL)) +
+  labs(x = "Distance to the core promoter (bps)", y = "Maximum slope (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_ave) * 0.8, y = max(filtered_data$rel_slope) * 0.95,
+           label = paste("R² = ", round(r_squared, 2)), size = 8, color = "black", hjust = 1, vjust = 1.5)
+
+
+
+# Print the plot
+print(plot)
+
+# Save the plot
+ggsave("output/slope_dis_ave.png", plot = plot, width = 4.8, height = 7.6)
+```
+
+#Plateau (basal deducted)
+```{r}
+dis.plateau <- plateau %>% select(genotype, Genotype, Treatment, rel_red) %>% merge(., distance, by = c("Genotype","genotype"))
+
+# Filter data and create the plot
+filtered_data <- dis.plateau %>% filter(Genotype != "WT")
+
+
+## Calculate the linear model for changed length of variants versus slope
+model <- lm(rel_red ~ dis_delta, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_delta, y = rel_red, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = seq(0, 800, 200)) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color) +
+  labs(x = "the length of flanking region being changed (bps)", y = "Basal exp \n (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_red) * 0.9,
+           label = paste("R² = ", round(r_squared, 2)), size = 5, color = "black") +
+  annotate("text", x = max(filtered_data$dis_delta) * 0.6, y = max(filtered_data$rel_red) * 0.8,
+           label = equation, size = 5, color = "black")
+
+# Print the plot
+print(plot)
+
+# Save the plot
+#ggsave("output/plateau_dis_delta.png", plot = plot, width = 7, height = 7)
+
+
+## Calculate the linear model for average distance to core promoter
+model <- lm(rel_red ~ dis_ave, data = filtered_data)
+r_squared <- summary(model)$r.squared
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Create the regression equation as a string
+equation <- paste("y = ", round(intercept, 3), " + ", round(slope, 3), "x", sep = "")
+
+# Create the plot
+plot <- filtered_data %>%
+  ggplot(aes(x = dis_ave, y = rel_red, color = Treatment)) + scatter +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = seq(0, 800, 200)) +
+  geom_abline(slope = 0, intercept = 1, linetype = "dashed", color = "#666666") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_manual(values = treatment_color, labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  guides(color = guide_legend(title = NULL)) +
+  labs(x = "Distance to the core promoter (bps)", y = "Plateau (relative to WT)") +
+  annotate("text", x = max(filtered_data$dis_ave) * 0.8, y = max(filtered_data$rel_red) * 0.95,
+           label = paste("R² = ", round(r_squared, 2)), size = 8, color = "black", hjust = 1, vjust = 1.5)
+
+# Print the plot
+print(plot)
+
+# Save the plot
+ggsave("output/plateau_dis_ave.png", plot = plot, width = 4.8, height = 7.6)
+```
+
+# plot the relationship between basal expression vs induction
+```{r}
+
+
+
+
+```
 
 
 ```{r}
