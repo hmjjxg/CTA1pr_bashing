@@ -1,0 +1,82 @@
+fullmodel: relative feature = beta_2.4 + beta_6.8 + beta_4.6 + beta_8.10 + 
+               beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10
+basemodel: relative feature = 1
+
+# basal (bwd stepwise prefer full model --> larger R square adj, smaller AIC and BIC)
+##- Pi:
+                   Estimate Std. Error t value Pr(>|t|)
+(Intercept)           0.143      0.032   4.480    0.000
+beta_2.4              0.485      0.054   9.034    0.000
+beta_4.6              0.097      0.070   1.390    0.167
+beta_6.8             -0.175      0.072  -2.428    0.017
+beta_8.10             0.486      0.047  10.316    0.000
+beta_2.4:beta_4.6    -0.372      0.074  -5.012    0.000
+beta_4.6:beta_6.8     0.149      0.072   2.059    0.042
+beta_6.8:beta_8.10    0.188      0.070   2.692    0.008
+
+##2mM H2O2:
+                   Estimate Std. Error t value Pr(>|t|)
+(Intercept)           0.123      0.029   4.167    0.000
+beta_2.4              0.492      0.048  10.242    0.000
+beta_4.6              0.103      0.062   1.667    0.098
+beta_6.8             -0.081      0.064  -1.270    0.206
+beta_8.10             0.469      0.042  11.045    0.000
+beta_2.4:beta_4.6    -0.358      0.066  -5.456    0.000
+beta_4.6:beta_6.8     0.129      0.065   1.973    0.051
+beta_6.8:beta_8.10    0.125      0.062   2.025    0.045
+
+##combined:
+                   Estimate Std. Error t value Pr(>|t|)
+(Intercept)           0.133      0.021   6.198    0.000
+beta_2.4              0.488      0.035  13.760    0.000
+beta_4.6              0.099      0.046   2.154    0.032
+beta_6.8             -0.125      0.048  -2.634    0.009
+beta_8.10             0.477      0.031  15.260    0.000
+beta_2.4:beta_4.6    -0.364      0.049  -7.463    0.000
+beta_4.6:beta_6.8     0.139      0.048   2.897    0.004
+beta_6.8:beta_8.10    0.154      0.046   3.348    0.001
+
+
+
+# Plateau (deduced basal expression)(fwd and bwd stepwise gave the same model, better than full model)
+## - Pi:
+                   Estimate Std. Error  t value Pr(>|t|)
+(Intercept)         0.09510    0.02381  3.99430  0.00012
+beta_2.4            0.54971    0.02633 20.87444  0.00000
+beta_6.8            0.40982    0.03971 10.32010  0.00000
+beta_4.6           -0.15517    0.02846 -5.45263  0.00000
+beta_8.10           0.01146    0.03538  0.32390  0.74661
+beta_6.8:beta_8.10  0.07624    0.05010  1.52161  0.13090
+
+
+## 2mM H2O2:
+                  Estimate Std. Error  t value Pr(>|t|)
+(Intercept)        0.06827    0.02115  3.22788  0.00159
+beta_2.4           0.67479    0.03515 19.19757  0.00000
+beta_8.10          0.21268    0.02142  9.92825  0.00000
+beta_6.8           0.12524    0.02307  5.42840  0.00000
+beta_4.6           0.22943    0.03489  6.57599  0.00000
+beta_2.4:beta_4.6 -0.31915    0.04716 -6.76781  0.00000
+
+
+
+# Maximum Slope (fwd and bwd stepwise gave the same model, better than full model)
+## - Pi:
+                   Estimate Std. Error  t value Pr(>|t|)
+(Intercept)         0.14238    0.01876  7.58985  0.00000
+beta_6.8            0.27484    0.04262  6.44865  0.00000
+beta_2.4            0.46000    0.02218 20.73987  0.00000
+beta_4.6           -0.15716    0.03353 -4.68706  0.00001
+beta_8.10           0.03503    0.02800  1.25116  0.21348
+beta_6.8:beta_4.6   0.16715    0.04296  3.89064  0.00017
+beta_6.8:beta_8.10  0.07151    0.03920  1.82416  0.07079
+
+## 2mM H2O2:
+                  Estimate Std. Error  t value Pr(>|t|)
+(Intercept)        0.06095    0.02744  2.22096  0.02814
+beta_2.4           0.65790    0.04658 14.12360  0.00000
+beta_8.10          0.26991    0.02782  9.70351  0.00000
+beta_6.8           0.08162    0.02997  2.72307  0.00739
+beta_4.6           0.19564    0.04528  4.32065  0.00003
+beta_2.4:beta_4.6 -0.27076    0.06166 -4.39159  0.00002
+
