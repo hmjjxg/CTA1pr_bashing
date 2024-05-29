@@ -1678,6 +1678,7 @@ oxi <- glance(fit.oxi) # AIC = -129, BIC = -103 , R square adj = 0.8203
 #new.levels <- c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")
 new.levels <- c("WT", "IR_8.10", "IR_6.8", "IR_4.6", "IR_2.4", "IS_2.4")
 
+# new.levels
 new.plateau <- plateau %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")) %>% 
   select(Genotype, Time, genotype, rel_ori,rel_red, Treatment) %>% 
   mutate(loss_ori = 1 - rel_ori, loss_red = 1 - rel_red) %>% 
@@ -1688,15 +1689,12 @@ new.slope <- slope.rel %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.
   mutate(loss_slope = 1 - rel_slope) %>% 
   mutate(Genotype = factor(Genotype, levels = new.levels))
 
-
 new.bas <- bas.rel %>% filter(Genotype %in% c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")) %>% 
   select(Genotype, Time, rel_base, Treatment,genotype) %>% 
   mutate(loss_base = 1 - rel_base) %>% 
   mutate(Genotype = factor(Genotype, levels = new.levels))
-  
-
+      
 # plot regulatory infomation loss
-
 new.plateau %>% 
   filter(!is.na(loss_red), Genotype != "PC") %>% 
   ggplot(aes(x = Genotype, y = loss_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
@@ -1722,7 +1720,7 @@ new.plateau %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= c(0.02, 0.9),
         axis.title.x=element_blank())
-ggsave("output/plateau_loss.png", width = 7.2, height = 2)
+#ggsave("output/plateau_loss.png", width = 7.2, height = 2)
 
 new.slope %>% 
   filter(!is.na(loss_slope), Genotype != "PC") %>% 
@@ -1749,8 +1747,7 @@ new.slope %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= "none",
         axis.title.x=element_blank())
-ggsave("output/slope_loss.png", width = 7.2, height = 2)
-
+#ggsave("output/slope_loss.png", width = 7.2, height = 2)
 
 new.bas %>% 
   filter(!is.na(loss_base), Genotype != "PC") %>% 
@@ -1777,7 +1774,203 @@ new.bas %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= c(0.02, 0.9),
         axis.title.x=element_blank())
-ggsave("output/base_loss.png", width = 10.16, height = 2)
+#ggsave("output/base_loss.png", width = 10.16, height = 2)
+```
+
+# plot CRM4.6 related three features relative to WT
+```{R}
+#CRM4.6
+CRM46.levels <- c("WT","IS_2.4","IS_2.6","IR_4.10","IR_6.10")
+
+## Plateau
+CRM46.plateau <- plateau %>% filter(Genotype %in% CRM46.levels) %>% 
+                 select(Genotype,Time,genotype,rel_ori,rel_red,Treatment) %>% 
+                 mutate(loss_ori = 1 - rel_ori, loss_red = 1 - rel_red, Genotype = factor(Genotype, levels = CRM46.levels)) 
+
+## Slope
+CRM46.slope <- slope.rel %>% filter(Genotype %in% CRM46.levels) %>% 
+               select(Genotype, rel_slope, Treatment) %>% 
+               mutate(loss_slope = 1 - rel_slope, Genotype = factor(Genotype, levels = CRM46.levels))
+
+## Basal expression
+CRM46.bas <- bas.rel %>% filter(Genotype %in% CRM46.levels) %>% 
+             select(Genotype, Time, rel_base, Treatment,genotype) %>% 
+             mutate(loss_base = 1 - rel_base, Genotype = factor(Genotype, levels = CRM46.levels))
+
+
+
+# Information loss relative to WT
+## CRM4.6 related Plateau loss
+CRM46.plateau %>% 
+  filter(!is.na(loss_red), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/CRM46_plateau_loss.png", width = 7.2, height = 2)
+
+## plot CRM4.6 related max slope
+CRM46.slope %>% 
+  filter(!is.na(loss_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max slope loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/CRM46_slope_loss.png", width = 7.2, height = 2)
+
+# CRM4.6 related basal exp
+CRM46.bas %>% 
+  filter(!is.na(loss_base), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = loss_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal exp loss \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+#ggsave("output/CRM46_base_loss.png", width = 10.16, height = 2)
+
+
+
+# Relative to WT
+## CRM4.6 related Plateau
+CRM46.plateau %>% 
+  filter(!is.na(rel_red), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+#ggsave("output/CRM46_plateau.png", width = 7.2, height = 2)
+
+
+## plot CRM4.6 related max slope
+CRM46.slope %>% 
+  filter(!is.na(rel_slope), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max slope \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+#ggsave("output/CRM46_slope.png", width = 7.2, height = 2)
+
+# CRM4.6 related basal exp
+CRM46.bas %>% 
+  filter(!is.na(rel_base), Genotype != "PC") %>% 
+  ggplot(aes(x = Genotype, y = rel_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(breaks = seq(-0.4,1.0,0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal exp \n (Relative to WT)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+#ggsave("output/CRM46_base.png", width = 10.16, height = 2)
 
 ```
 # basal exp loss (distal more important thant proximal)
@@ -1786,8 +1979,7 @@ distal.levels <- c("WT", "IR_8.10", "IR_6.8", "IR_6.10","IS_2.6","IR_4.6", "IR_2
 
 new.bas <- bas.rel %>% filter(Genotype %in% distal.levels) %>% 
   select(Genotype, Time, rel_base, Treatment,genotype) %>% 
-  mutate(loss_base = 1 - rel_base) %>% 
-  mutate(Genotype = factor(Genotype, levels = distal.levels))
+  mutate(loss_base = 1 - rel_base, Genotype = factor(Genotype, levels = distal.levels))
 
 new.bas %>% 
   filter(!is.na(loss_base), Genotype != "PC") %>% 
