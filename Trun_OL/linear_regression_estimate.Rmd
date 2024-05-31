@@ -1,0 +1,265 @@
+---
+title: "linear_regression_estimate"
+author: "JY"
+date: "2024-05-31"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggtext)
+#library(mgcv)
+library(broom)
+library(cowplot)
+library(ggpattern)
+```
+
+## Goal
+Plot the dynamics for CTA1 promoter bashing variants under - Pi and 2 mM H2O2 treatment
+
+## Common plotting functions
+**Update 2022-11-08** 
+This list is used as a shared plotting set up.
+```{r}
+p.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.05,0.75), 
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+mean.timecourse <- list(
+  stat_summary(fun = "mean", geom = "point", size = 3),
+  stat_smooth(aes(size = Genotype == "WT"), method = "loess", 
+              formula = 'y~x', se = FALSE),
+  scale_x_continuous(breaks = seq(0,240,30)),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x = "Time (min)", y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+
+
+scatter <- list(stat_summary(fun = "mean", geom = "point", size = 3),
+                scale_y_continuous(breaks = seq(0,1.0,0.25)),
+                scale_x_continuous(breaks = seq(0,1.0,0.25)),
+                scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+                expand_limits(x = 0, y = 0),
+                theme_cowplot(line_size = 0.7, font_size = 20),
+                theme(legend.position=c(0.02,0.82),
+                legend.text = element_text(face = 3), 
+                legend.title = element_text(),
+                axis.title = element_text(size = rel(1)), 
+                axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1))))
+
+bar.list <- list(
+  stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  labs(x =paste0("2mM H2O2, OL variants ", deparse1(substitute(input_tp)), " min"), y = "Cta1-GFP protein level (a.u.)"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+
+bar.list.no.stat <- list(
+  #stat_summary(fun.data = "mean_cl_boot", conf.int = .95, colour = "red", linewidth = 1, size = 0.8),
+  scale_size_manual(values = c(0.8, 1.5), guide = "none"),
+  theme_cowplot(line_size = 0.7, font_size = 14),
+  theme(legend.position=c(0.02,0.9),
+        #legend.direction = "horizontal",
+        #legend.box.background = element_rect(color = "black"),
+        #legend.box.margin = margin(3,3,3,3),
+        legend.text = element_text(face = 3), 
+        legend.title = element_text(),
+        axis.title = element_text(size = rel(1)), 
+        #axis.title.x = element_blank(),
+        axis.text.x = element_text(hjust=0.5), axis.text = element_text(size = rel(1)),
+  )
+)
+  
+
+
+```
+
+# plot main effect
+```{r}
+# read in main effect csv file
+levels <- c("beta_4","beta_3","beta_2","beta_1")
+main_effect <- read.csv("input/main_effect.csv", stringsAsFactors=FALSE) %>% mutate(main_effect = factor(main_effect, levels = levels))
+
+
+# plot main effect
+## - Pi
+main_effect %>% 
+  filter(Treatment == "0Pi") %>% 
+  ggplot(aes(x = main_effect, y = Estimate, fill = feature, color = feature)) + 
+  bar.list.no.stat +
+  scale_fill_viridis_d(option = "D", labels = c("basal", "plateau", "max slope")) +
+  scale_color_viridis_d(option = "D", labels = c("basal", "plateau", "max slope")) +  
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern = "none",  # Setting pattern to NULL
+                   pattern_fill = NA,  # Removing any existing pattern fill
+                   pattern_key_scale_factor = 1,
+                   width = 0.8) + 
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  #xlab("main effect") +
+  ylab("Estimates (- Pi)") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour = "black", fill = "white", size = 1, linetype = "solid"), 
+        legend.position = c(0.02, 0.9),
+        axis.title.x = element_blank())
+#ggsave("output/main_effect_0Pi.png", width = 7.1, height = 1.75)
+
+# 2mM H2O2
+main_effect %>% 
+  filter(Treatment == "2mMH2O2") %>% 
+  ggplot(aes(x = main_effect, y = Estimate, fill = feature, color = feature)) + 
+  bar.list.no.stat +
+  scale_fill_viridis_d(option = "D", labels = c("basal", "plateau", "max slope")) +
+  scale_color_viridis_d(option = "D", labels = c("basal", "plateau", "max slope")) +  
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern = "none",  # Setting pattern to NULL
+                   pattern_fill = NA,  # Removing any existing pattern fill
+                   pattern_key_scale_factor = 1,
+                   width = 0.8) + 
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  #xlab("main effect") +
+  ylab(expression("Estimates (H"[2]*"O"[2]*")")) +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour = "black", fill = "white", size = 1, linetype = "solid"), 
+        legend.position = "none",
+        axis.title.x = element_blank())
+#ggsave("output/main_effect_H2O2.png", width = 7.1, height = 1.75)
+
+
+```
+# pattern related code
+```{r}
+# plot main effect
+## Plateau
+main_effect %>% 
+  filter(feature == "plateau") %>% 
+  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/main_effect_Plateau.png", width = 10.16, height = 2)
+
+# Max Slope
+main_effect %>% 
+  filter(feature == "max_slope") %>% 
+  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/main_effect_max_slope.png", width = 10.16, height = 2)
+
+# basal
+main_effect %>% 
+  filter(feature == "basal") %>% 
+  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal Exp") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/main_effect_basal.png", width = 10.16, height = 2)
+
+
+```
