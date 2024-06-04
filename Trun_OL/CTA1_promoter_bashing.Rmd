@@ -1608,9 +1608,40 @@ ggsave("output/TrunV_slope_rel_max.png", width = 10.16, height = 2)
 
 #statstical test for max slope
 ```{r}
-rs.slope <- read.csv("input/rs_slope_rel.csv")
-slope.rel <- bind_rows(TrunV.slope, ol.slope) %>% select(slope, rel_slope, Genotype, Treatment) %>% bind_rows(.,rs.slope) %>% 
-            mutate(beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
+# add column genotype through Genotype name
+rs.slope <- read.csv("input/rs_slope_rel.csv") %>% mutate(genotype = case_when(
+  Genotype == "WT" ~ "wt",
+  Genotype == "IS_2.4" ~ "RS1_24",
+  Genotype == "IS_2.6" ~ "RS1_26",
+  Genotype == "IS_2.8" ~ "RS1_28",
+  Genotype == "IS_2.10" ~ "RS1_210",
+))
+
+TrunV.slope <- TrunV.slope %>%
+  mutate(genotype = case_when(
+    Genotype == "WT" ~ "wt",
+    Genotype == "PC" ~ "rescue",
+    Genotype == "IR_2.10" ~ "2V",
+    Genotype == "IR_4.10" ~ "4V",
+    Genotype == "IR_6.10" ~ "6V",
+    Genotype == "IR_8.10" ~ "8V",
+    TRUE ~ as.character(Genotype) # Default case, retaining the original value
+  ))
+
+ol.slope <- ol.slope %>% mutate(genotype = case_when(
+  Genotype == "WT" ~ "wt",
+  Genotype == "PC" ~ "rescue",
+  Genotype == "IR_2.4" ~ "4OL",
+  Genotype == "IR_4.6" ~ "6OL",
+  Genotype == "IR_6.8" ~ "8OL",
+  Genotype == "IR_8.10" ~ "10OL", 
+  TRUE ~ as.character(Genotype)
+  ))
+  
+
+slope.rel <- bind_rows(TrunV.slope, ol.slope) %>% select(slope, rel_slope, Genotype, genotype, Treatment) %>%
+             bind_rows(.,rs.slope) %>% 
+             mutate(beta_2.4 = 1, beta_4.6 = 1, beta_6.8 = 1, beta_8.10 = 1)
 
 slope.rel$beta_2.4 <- with(slope.rel, ifelse(Genotype == "IR_2.4" | Genotype == "IR_2.10" | Genotype == "IS_2.4" |
                                          Genotype == "IS_2.6" | Genotype == "IS_2.8" | Genotype == "IS_2.10", 0, 1))
@@ -1673,6 +1704,161 @@ fit.oxi <- lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
 #round(summary(fit.oxi)$coef, 3)
 oxi <- glance(fit.oxi) # AIC = -129, BIC = -103 , R square adj = 0.8203
 ```
+#separately model three series
+```{r}
+OL.levels <- c("wt","4OL", "6OL", "8OL", "10OL")
+TrunV.levels <- c("wt","2V", "4V", "6V", "8V")
+RS.levels <- c("wt","RS1_24","RS1_26","RS1_28","RS1_210")
+
+# OL variants
+## basal
+# - Pi:
+bas.rel.ol.pi <- bas.rel %>% filter(genotype %in% OL.levels, Treatment == "0Pi")
+
+fit.ol.pi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.ol.pi)
+round(summary(fit.ol.pi)$coef, 5)
+
+
+# 2mM h2o2:
+bas.rel.ol.oxi <- bas.rel %>% filter(genotype %in% OL.levels, Treatment == "2mMH2O2")
+
+fit.ol.oxi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.ol.oxi )
+round(summary(fit.ol.oxi)$coef, 5)
+
+
+# combined:
+bas.rel.ol <- bas.rel %>% filter(genotype %in% OL.levels)
+fit.ol <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.ol)
+round(summary(fit.ol)$coef, 5)
+
+
+## plateau
+plateau.rel.ol.pi <- plateau %>% filter(genotype %in% OL.levels, Treatment == "0Pi")
+plateau.rel.ol.oxi <- plateau %>% filter(genotype %in% OL.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.ol.pi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.ol.pi )
+round(summary(fit.ol.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.ol.oxi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.ol.oxi )
+round(summary(fit.ol.oxi)$coef, 5)
+
+
+## max slope
+slope.rel.ol.pi <- slope.rel %>% filter(genotype %in% OL.levels, Treatment == "0Pi")
+slope.rel.ol.oxi <- slope.rel %>% filter(genotype %in% OL.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.ol.pi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.ol.pi )
+round(summary(fit.ol.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.ol.oxi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.ol.oxi )
+round(summary(fit.ol.oxi)$coef, 5)
+
+
+# Truancation variants
+## basal
+# - Pi:
+bas.rel.pi <- bas.rel %>% filter(genotype %in% TrunV.levels, Treatment == "0Pi")
+
+fit.pi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.pi)
+round(summary(fit.pi)$coef, 5)
+
+
+# 2mM h2o2:
+bas.rel.oxi <- bas.rel %>% filter(genotype %in% TrunV.levels, Treatment == "2mMH2O2")
+
+fit.oxi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+# combined:
+bas.all <- bas.rel %>% filter(genotype %in% TrunV.levels)
+fit.bas <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.all)
+round(summary(fit.bas)$coef, 5)
+
+
+## plateau
+plateau.rel.pi <- plateau %>% filter(genotype %in% TrunV.levels, Treatment == "0Pi")
+plateau.rel.oxi <- plateau %>% filter(genotype %in% TrunV.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.pi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.pi )
+round(summary(fit.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.oxi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+## max slope
+slope.rel.pi <- slope.rel %>% filter(genotype %in% TrunV.levels, Treatment == "0Pi")
+slope.rel.oxi <- slope.rel %>% filter(genotype %in% TrunV.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.pi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.pi )
+round(summary(fit.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.oxi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+
+# RS variants
+## basal
+# - Pi:
+bas.rel.pi <- bas.rel %>% filter(genotype %in% RS.levels, Treatment == "0Pi")
+
+fit.pi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.pi)
+round(summary(fit.pi)$coef, 5)
+
+
+# 2mM h2o2:
+bas.rel.oxi <- bas.rel %>% filter(genotype %in% RS.levels, Treatment == "2mMH2O2")
+
+fit.oxi <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+# combined:
+bas.all <- bas.rel %>% filter(genotype %in% RS.levels)
+fit.bas <- lm(rel_base ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = bas.all)
+round(summary(fit.bas)$coef, 5)
+
+
+## plateau
+plateau.rel.pi <- plateau %>% filter(genotype %in% RS.levels, Treatment == "0Pi")
+plateau.rel.oxi <- plateau %>% filter(genotype %in% RS.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.pi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.pi )
+round(summary(fit.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.oxi <- lm(rel_red ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = plateau.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+## max slope
+slope.rel.pi <- slope.rel %>% filter(genotype %in% RS.levels, Treatment == "0Pi")
+slope.rel.oxi <- slope.rel %>% filter(genotype %in% RS.levels, Treatment == "2mMH2O2")
+
+# - Pi
+fit.pi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.pi )
+round(summary(fit.pi)$coef, 5)
+
+# 2mM H2O2:
+fit.oxi <- lm(rel_slope ~   beta_2.4 + beta_4.6 +  beta_6.8 + beta_8.10, data = slope.rel.oxi )
+round(summary(fit.oxi)$coef, 5)
+
+
+```
+
+
+
 #Plot regulatory information loss with all variants
 ```{r}
 #new.levels <- c("WT", "IS_2.4","IR_2.4","IR_4.6","IR_6.8","IR_8.10")
