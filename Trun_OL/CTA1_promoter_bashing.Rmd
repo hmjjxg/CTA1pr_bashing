@@ -16,6 +16,7 @@ library(ggtext)
 library(broom)
 library(cowplot)
 library(ggpattern)
+library(RColorBrewer)
 ```
 
 ## Goal
@@ -857,8 +858,8 @@ data.TrunV.pi <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types 
 #### Plot the truncation variants data (TrunV)
 ```{r}
 # recode the genotype
-levels <- c(`WT` = "wt", `PC`= "rescue", `IR_2.10` = "2V", `IR_4.10` = "4V", `IR_6.10` = "6V", `IR_8.10` = "8V")
-levels.norescue <- c(`WT` = "wt",`IR_2.10` = "2V", `IR_4.10` = "4V", `IR_6.10` = "6V", `IR_8.10` = "8V")
+levels <- c(`WT` = "wt", `PC`= "rescue", `IR_8.10` = "8V", `IR_6.10` = "6V", `IR_4.10` = "4V", `IR_2.10` = "2V" )
+levels.norescue <- c(`WT` = "wt",`IR_8.10` = "8V", `IR_6.10` = "6V", `IR_4.10` = "4V", `IR_2.10` = "2V" )
 G.levels <- c("WT", "PC", "IR_8.10", "IR_6.10", "IR_4.10", "IR_2.10")
 
 
@@ -871,13 +872,25 @@ pi.TrunV.dat <- data.TrunV.pi %>%
   arrange(new_time, genotype, replicate) %>% 
   mutate(Genotype = factor(Genotype, levels = G.levels))
 
+# Generate a darker subset of colors
+n_colors <- 7  # Generate more colors than needed
+full_palette <- brewer.pal(n_colors, "YlGnBu")
+darker_palette <- full_palette[7:3]  # Select a subset of darker colors
+
+# Create a scale for the darker colors
+scale_darker_ygb <- scale_color_manual(values = darker_palette)
+
 
 pi.TrunV.dat %>%
   filter(!is.na(new_median), genotype != "rescue") %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_viridis_d(limits = names(levels.norescue), option = "plasma")  +
-  labs(x = "Phosphate starvation, Time (min)")
-#ggsave("output/TrunV_0Pi_norescue.png", width = 6, height = 8)
+  scale_darker_ygb +
+  labs(x = "Phosphate starvation, Time (min)")+
+   theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+ggsave("output/TrunV_0Pi_ygb.png", width = 3.7, height = 6)
 ```
 #### 2mM H2O2 Data
 Import 2mM H2O2 TrunV data and get the replicate, time and genotype info
@@ -926,13 +939,27 @@ oxi.TrunV.dat <- data.TrunV.oxi  %>%
   mutate(Genotype = factor(Genotype, levels = G.levels))
 
 
+# Generate a darker subset of colors
+n_colors <- 7  # Generate more colors than needed
+full_palette <- brewer.pal(n_colors, "YlGnBu")
+darker_palette <- full_palette[7:3]  # Select a subset of darker colors
+
+# Create a scale for the darker colors
+scale_darker_ygb <- scale_color_manual(values = darker_palette)
+
+
+
 oxi.TrunV.dat %>%
   filter(!is.na(new_median), genotype != "rescue") %>% 
   ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
-  scale_color_viridis_d(limits = names(levels.norescue), option = "plasma")  +
-  xlab("2mM H2O2 stress, time (min)")
-  #scale_y_continuous(limits = c(NA, 22))
-#ggsave("output/TrunV_oxi_norescue.png", width = 6, height = 8)
+  scale_darker_ygb +
+  xlab("2mM H2O2 stress, time (min)") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  )
+ggsave("output/TrunV_oxi_ygb.png", width = 3.7, height = 6)
 ```
 ## Basal expression level of Truncation variants
 ```{r}
