@@ -179,13 +179,15 @@ main_effect %>%
 levels <- c("beta_4","beta_3","beta_2","beta_1")
 
 # read in tP series main effect
-dPs.main_effect <- read.csv("input/dPs_main_effect.csv", stringsAsFactors=FALSE) %>% mutate(main_effect = factor(main_effect, levels = levels))
+dPs.main_effect <- read.csv("input/dPs_main_effect.csv", stringsAsFactors=FALSE) %>% 
+                   mutate(main_effect = factor(main_effect, levels = levels)) %>%
+                   mutate(seg = fct_recode(main_effect, 'P4' = "beta_4", 'P3' = "beta_3", 'P2' = "beta_2", 'P1' = "beta_1"))
 
 # plot main effect
 ## Plateau
 dPs.main_effect %>% 
   filter(feature == "plateau") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -200,7 +202,7 @@ dPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Plateau") +
@@ -213,7 +215,7 @@ ggsave("output/dPs_main_effect_Plateau.png", width = 3.3, height = 3.3)
 # Max Slope
 dPs.main_effect %>% 
   filter(feature == "max_slope") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -228,20 +230,20 @@ dPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Max Slope") +
   guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
-        legend.position= c(0.02, 0.9),
+        legend.position= "none",
         axis.title.x=element_blank())
 ggsave("output/dPs_main_effect_max_slope.png", width = 3.3, height = 3.3)
 
 # basal
 dPs.main_effect %>% 
   filter(feature == "basal") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -256,7 +258,7 @@ dPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Basal Exp") +
@@ -273,13 +275,15 @@ ggsave("output/dPs_main_effect_basal.png", width = 3.3, height = 3.3)
 levels <- c("beta_4","beta_3","beta_2","beta_1")
 
 # read in tP series main effect
-tPs.main_effect <- read.csv("input/tPs_main_effect.csv", stringsAsFactors=FALSE) %>% mutate(main_effect = factor(main_effect, levels = levels))
+tPs.main_effect <- read.csv("input/tPs_main_effect.csv", stringsAsFactors=FALSE) %>% 
+                   mutate(main_effect = factor(main_effect, levels = levels)) %>%
+                   mutate(seg = fct_recode(main_effect, 'P4' = "beta_4", 'P3' = "beta_3", 'P2' = "beta_2", 'P1' = "beta_1"))
 
 # plot main effect
 ## Plateau
 tPs.main_effect %>% 
   filter(feature == "plateau") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -294,7 +298,7 @@ tPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Plateau") +
@@ -307,7 +311,7 @@ ggsave("output/tPs_main_effect_Plateau.png", width = 3.3, height = 3.3)
 # Max Slope
 tPs.main_effect %>% 
   filter(feature == "max_slope") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -322,7 +326,7 @@ tPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Max Slope") +
@@ -335,7 +339,7 @@ ggsave("output/tPs_main_effect_max_slope.png", width = 3.3, height = 3.3)
 # basal
 tPs.main_effect %>% 
   filter(feature == "basal") %>% 
-  ggplot(aes(x = main_effect, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
                    color = "black", 
@@ -350,16 +354,114 @@ tPs.main_effect %>%
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
-  #geom_jitter(width = 0.3) +
+  coord_cartesian(ylim = c(-0.4, 1)) +
   geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
   xlab("promoter bashing variants") +
   ylab("Basal Exp") +
   guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
-        legend.position= "none",
+        legend.position= c(0.02, 0.9),
         axis.title.x=element_blank())
 ggsave("output/tPs_main_effect_basal.png", width = 3.3, height = 3.3)
 ```
+#rPs
+```{r}
+# define levels
+levels <- c("beta_4","beta_3","beta_2","beta_1")
+
+# read in tP series main effect
+rPs.main_effect <- read.csv("input/rPs_main_effect.csv", stringsAsFactors=FALSE) %>% 
+                   mutate(main_effect = factor(main_effect, levels = levels)) %>% 
+                   mutate(seg = fct_recode(main_effect, 'P4' = "beta_4", 'P3' = "beta_3", 'P2' = "beta_2", 'P1' = "beta_1"))
+
+# plot main effect
+## Plateau
+rPs.main_effect %>% 
+  filter(feature == "plateau") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/rPs_main_effect_Plateau.png", width = 3.3, height = 3.3)
+
+# Max Slope
+rPs.main_effect %>% 
+  filter(feature == "max_slope") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/rPs_main_effect_max_slope.png", width = 3.3, height = 3.3)
+
+# basal
+rPs.main_effect %>% 
+  filter(feature == "basal") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal Exp") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/rPs_main_effect_basal.png", width = 3.3, height = 3.3)
+```
+
+
+
 # interaction main effect
 ```{r}
 # define levels
