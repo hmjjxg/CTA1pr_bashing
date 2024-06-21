@@ -154,7 +154,7 @@ data.ol.pi <- map_dfr(files, ~read_csv(., na = c("", "NA", "N/A"), col_types = c
 Plot the internal removal variants data(OL)
 ```{r}
 # recode the genotype
-levels <- c(`WT` = "wt", `PC`= "rescue",`IR_2.4` = "4OL", `IR_4.6` = "6OL", `IR_6.8` = "8OL", `IR_8.10` = "10OL")
+levels <- c(`WT` = "wt", `PC`= "rescue",`IR_8.10` = "10OL", `IR_6.8` = "8OL", `IR_4.6` = "6OL", `IR_2.4` = "4OL")
 levels.norescue <- c(`WT` = "wt",`IR_2.4` = "4OL", `IR_4.6` = "6OL", `IR_6.8` = "8OL", `IR_8.10` = "10OL")
 G.levels <- c("WT", "PC", "IR_8.10", "IR_6.8", "IR_4.6", "IR_2.4")
 
@@ -166,7 +166,8 @@ pi.ol.dat <- data.ol.pi %>%
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
   mutate(genotype = factor(genotype, levels = levels)) %>% 
-  mutate(Genotype = factor(Genotype, levels = G.levels))
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  mutate(dP_series = fct_recode(genotype, 'WT' = "wt", 'PC' = "rescue", 'dP4' = "10OL", 'dP3' = "8OL", 'dP2' = "6OL", 'dP1' = "4OL"))
 
 pi.ol.dat %>%
   filter(!is.na(new_median), genotype != "rescue") %>% 
@@ -174,6 +175,28 @@ pi.ol.dat %>%
   scale_color_viridis_d(limits = names(levels.norescue))  +
   labs(x = "Phosphate starvation, Time (min)")
 #ggsave("output/OL_0Pi_norescue.png", width = 6, height = 8)
+
+
+# Generate a darker subset of colors
+n_colors <- 7  # Generate more colors than needed
+full_palette <- brewer.pal(n_colors, "YlGnBu") # display.brewer.all()
+darker_palette <- full_palette[7:3]  # Select a subset of darker colors
+
+# Create a scale for the darker colors
+scale_darker_ygb <- scale_color_manual(values = darker_palette)
+
+pi.ol.dat %>%
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = dP_series)) + p.timecourse +
+  scale_darker_ygb +
+  labs(x = "Phosphate starvation, Time (min)")+
+   theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+#ggsave("output/OL_0Pi_ygb.png", width = 3.7, height = 6)
+
+
 ```
 #### 2mM H2O2 Data
 Import 2mM H2O2 OL data and get the replicate, time and genotype info
@@ -218,7 +241,8 @@ oxi.ol.dat <- data.ol.oxi %>%
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
   mutate(genotype = factor(genotype, levels = levels))%>% 
-  mutate(Genotype = factor(Genotype, levels = G.levels))
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  mutate(dP_series = fct_recode(genotype, 'WT' = "wt", 'PC' = "rescue", 'dP4' = "10OL", 'dP3' = "8OL", 'dP2' = "6OL", 'dP1' = "4OL"))
 
 
 oxi.ol.dat %>%
@@ -227,6 +251,27 @@ oxi.ol.dat %>%
   scale_color_viridis_d(limits = names(levels.norescue)) +
   xlab("2mM H2O2, time (min)")
 #ggsave("output/OL_oxi.png", width = 6, height = 8)
+
+
+# Generate a darker subset of colors
+n_colors <- 7  # Generate more colors than needed
+full_palette <- brewer.pal(n_colors, "YlGnBu") # display.brewer.all()
+darker_palette <- full_palette[7:3]  # Select a subset of darker colors
+
+# Create a scale for the darker colors
+scale_darker_ygb <- scale_color_manual(values = darker_palette)
+
+oxi.ol.dat %>%
+  filter(!is.na(new_median), genotype != "rescue") %>% 
+  ggplot(aes(x = new_time, y = new_median, color = dP_series)) + p.timecourse +
+  scale_darker_ygb +
+  labs(x = "Phosphate starvation, Time (min)")+
+   theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+#ggsave("output/OL_oxi_ygb.png", width = 3.7, height = 6)
+
 ```
 ## Basal expression level of OL variants
 ```{r}

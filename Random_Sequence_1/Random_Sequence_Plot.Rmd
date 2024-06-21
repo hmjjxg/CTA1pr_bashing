@@ -13,6 +13,7 @@ library(cowplot)
 library(viridis)
 library(scales)
 library(ggpattern)
+library(RColorBrewer)
 Sys.setenv(LANG = "en")
 ```
 
@@ -194,7 +195,8 @@ pi.dat <- data %>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels))%>% 
+  mutate(rP_series = fct_recode(genotype, `WT` = "wt", `rP1` = "RS1_24",  `rP2` = "RS1_26", `rP3` = "RS1_28", `rP4` = "RS1_210" ))
 
 h2o2.dat <- data %>% 
   filter(treat == "2mMH2O2") %>% 
@@ -203,7 +205,8 @@ h2o2.dat <- data %>%
   mutate(new_median =median/1000) %>% 
   mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
   arrange(new_time, genotype, replicate)%>% 
-  mutate(genotype = factor(genotype, levels = levels))
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(rP_series = fct_recode(genotype, `WT` = "wt", `rP1` = "RS1_24",  `rP2` = "RS1_26", `rP3` = "RS1_28", `rP4` = "RS1_210" ))
 ```
 
 #### Full time course
@@ -224,6 +227,38 @@ h2o2.dat %>%
   theme(legend.position=c(0.75,0.9)) +
   labs(x = "2mM H2O2, Time (min)")
 #ggsave("output/Rs1_2mMH2O2.png", width = 6, height = 8)
+
+#Generate a darker subset of colors
+n_colors <- 7 # Generate more colors than needed
+full_palette <- brewer.pal(n_colors, "YlGnBu")
+darker_palette <- full_palette[7:3] # Select a subset of darker colors
+
+#Create a scale for the darker colors
+scale_darker_ygb <- scale_color_manual(values = darker_palette)
+
+pi.dat %>%
+filter(!is.na(new_median), genotype != "rescue") %>%
+ggplot(aes(x = new_time, y = new_median, color = rP_series)) + p.timecourse +
+scale_darker_ygb +
+labs(x = "Phosphate starvation, Time (min)")+
+theme(
+axis.title.x = element_blank(),
+axis.title.y = element_blank()
+)
+ggsave("output/RS1_0Pi_ygb.png", width = 3.7, height = 6)
+
+h2o2.dat %>%
+filter(!is.na(new_median), genotype != "rescue") %>%
+ggplot(aes(x = new_time, y = new_median, color = rP_series)) + p.timecourse +
+scale_darker_ygb +
+labs(x = "Phosphate starvation, Time (min)")+
+theme(
+axis.title.x = element_blank(),
+axis.title.y = element_blank()
+)
+ggsave("output/RS1_oxi_ygb.png", width = 3.7, height = 6)
+
+
 
 # only wt
 rs.data <- data %>% 
