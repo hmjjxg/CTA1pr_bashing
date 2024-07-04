@@ -463,6 +463,7 @@ ggsave("output/rPs_main_effect_basal.png", width = 3.3, height = 3.3)
 
 
 # interaction main effect
+#1. all three series
 ```{r}
 # define levels
 inter.levels <- c("beta_34","beta_23","beta_12")
@@ -558,9 +559,100 @@ inter.main_effect %>%
 ggsave("output/inter_main_effect_basal.png", width = 3.3, height = 3.3)
 ```
 
+#2. dP and tP series
+```{r}
+# load interaction main effect
+inter.no_rP.main_effect <- read.csv("input/dPs_tPs_interaction_main_effect.csv", stringsAsFactors=FALSE) %>% 
+                     mutate(main_effect = factor(main_effect, levels = inter.levels)) %>% 
+                     mutate(interaction_terms = fct_recode(main_effect, 'P4:P3' = "beta_34", 'P3:P2' = "beta_23", 'P2:P1' = "beta_12"))
 
+## Plateau
+inter.no_rP.main_effect %>% 
+  filter(feature == "plateau") %>% 
+  ggplot(aes(x = interaction_terms, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 0.4, 0.2)) +
+  coord_cartesian(ylim = c(-0.5, 0.4)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/inter_no_rP_Plateau.png", width = 3.3, height = 3.3)
 
+# Max Slope
+inter.no_rP.main_effect %>% 
+  filter(feature == "max_slope") %>% 
+  ggplot(aes(x = interaction_terms, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 0.4, 0.2)) +
+  coord_cartesian(ylim = c(-0.5, 0.4)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+ggsave("output/inter_no_rP_max_slope.png", width = 3.3, height = 3.3)
+
+# basal
+inter.no_rP.main_effect %>% 
+  filter(feature == "basal", Treatment != "both") %>% 
+  ggplot(aes(x = interaction_terms, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 0.4, 0.2)) +
+  coord_cartesian(ylim = c(-0.5, 0.4)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Basal Exp") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/inter_no_rP_basal.png", width = 3.3, height = 3.3)
 ```
+```
+
+
 # combine 3 series
 ```{r}
 # plot main effect

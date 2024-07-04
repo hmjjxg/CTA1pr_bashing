@@ -1478,6 +1478,7 @@ round(summary(fit.oxi)$coef, 3)
 # Note for contrast matrix: set -1 (IRs) vs 0 (WT) and set 0(IRs) vs 1 (WT) give the exact same result.
 ```
 
+
 # epitasis test between 600 - 800 bps and 800 - 1kb bps region
 ```{r}
 # Method I: get IR_6.10, IR_6.8, IR_8.10 and WT for epistasis test
@@ -1730,7 +1731,7 @@ slope.rel.oxi <- slope.rel %>% filter(Genotype != "PC", Treatment == "2mMH2O2")
 
 
 
-# variable selection for the lm (with reduction)
+# variable selection for the lm
 # - Pi:
 full.model.pi <- lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
                              beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = slope.rel.pi)
@@ -1776,7 +1777,189 @@ fit.oxi <- lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
 #round(summary(fit.oxi)$coef, 3)
 oxi <- glance(fit.oxi) # AIC = -129, BIC = -103 , R square adj = 0.8203
 ```
-#separately model three series
+
+# combine tP and dP variants for epistasis test (max slope & basal)
+```{r}
+OL.levels <- c("wt","4OL", "6OL", "8OL", "10OL")
+TrunV.levels <- c("wt","2V", "4V", "6V", "8V")
+RS.levels <- c("wt","RS1_24","RS1_26","RS1_28","RS1_210")
+
+
+
+## 1. Max Slope (tP and dP series)
+slope.rel.no_rp.pi <- slope.rel %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "0Pi")
+slope.rel.no_rp.oxi <- slope.rel %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "2mMH2O2")
+
+# variable selection for the lm
+# - Pi:
+full.model.pi.no_rp <- lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = slope.rel.no_rp.pi)
+base.model.pi.no_rp <- lm(rel_slope ~ 1, data = slope.rel.no_rp.pi)
+
+# 2mM H2O2:
+full.model.oxi.no_rp <- lm(rel_slope ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = slope.rel.no_rp.oxi)
+base.model.oxi.no_rp <- lm(rel_slope ~ 1, data = slope.rel.no_rp.oxi)
+
+#choose a model by AIC in a stepwise algorithm
+# forward
+step(base.model.pi.no_rp, scope= list(upper=full.model.pi.no_rp,lower=~1),direction="forward")
+step(base.model.oxi.no_rp, scope = list(upper = full.model.oxi.no_rp, lower =~1), direction = "forward")
+
+# backward: all prefers full model
+step(full.model.pi.no_rp, direction="backward") 
+step(full.model.oxi.no_rp, direction = "backward") 
+
+#the best forward and backward stepwise selected model: (better than full model)
+# - Pi: (both fwd and bwd)
+fit.pi.fwd <-   lm(rel_slope ~  beta_6.8 + beta_2.4 + beta_4.6 + beta_8.10 + beta_2.4:beta_4.6 +
+                               beta_6.8:beta_8.10, data = slope.rel.no_rp.pi)
+round(summary(fit.pi.fwd)$coef, 5)
+pi.fwd <- glance(fit.pi.fwd) # AIC = -169, BIC = -150 , R square adj = 0.992
+
+# 2mM h2o2:(both fwd and bwd = full model)
+fit.oxi.fwd <- lm(rel_slope ~   beta_2.4 + beta_8.10 + beta_6.8 + beta_4.6 +  beta_6.8:beta_8.10 + beta_6.8:beta_4.6 + beta_2.4:beta_4.6, 
+                  data = slope.rel.no_rp.oxi)
+round(summary(fit.oxi.fwd)$coef, 5)
+oxi.fwd <- glance(fit.oxi.fwd) # AIC = -118, BIC = -95 , R square adj = 0.81
+
+# full model
+# - Pi:  (not optimal)
+fit.pi <- lm(rel_slope ~  beta_2.4 + beta_6.8 + beta_4.6 + beta_8.10 + 
+               beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = slope.rel.no_rp.pi)
+round(summary(fit.pi)$coef, 3)
+pi <- glance(fit.pi) # AIC = -167, BIC = -145 , R square adj = 0.915
+
+
+
+# 2. Basal
+bas.rel.no_rp.pi <- bas.rel %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "0Pi")
+bas.rel.no_rp.oxi <- bas.rel %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "2mMH2O2")
+bas.rel.no_rp <- bas.rel %>% filter(genotype %in% c(OL.levels, TrunV.levels))
+
+
+
+# variable selection for the lm
+# - Pi:
+full.model.pi <- lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                 beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = bas.rel.no_rp.pi)
+base.model.pi <- lm(rel_base ~ 1, data = bas.rel.no_rp.pi)
+
+# 2mM H2O2:
+full.model.oxi <- lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                 beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = bas.rel.no_rp.oxi)
+base.model.oxi <- lm(rel_base ~ 1, data = bas.rel.no_rp.oxi)
+
+
+# all treatment:
+full.model <- lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = bas.rel.no_rp )
+base.model <- lm(rel_base ~ 1, data = bas.rel.no_rp )
+
+#choose a model by AIC in a stepwise algorithm
+# forward
+step(base.model.pi, scope=list(upper=full.model.pi,lower=~1),direction="forward")
+step(base.model.oxi, scope = list(upper = full.model.oxi, lower =~1), direction = "forward")
+step(base.model, scope = list(upper = full.model, lower = ~1), direction = "forward")
+
+# backward: all prefers full model
+step(full.model.pi, direction="backward") 
+step(full.model.oxi, direction = "backward") 
+step(full.model, direction = "backward")
+
+
+#the best forward stepwise selected model:
+# - Pi: (fwd and bwd are very close, show both and have bin decide)
+## fwd
+fit.pi.fwd <- lm(rel_base ~  beta_8.10 + beta_4.6 + beta_6.8 + beta_4.6:beta_6.8, data = bas.rel.no_rp.pi)
+pi.fwd <- glance(fit.pi.fwd) # AIC = -167, BIC = -152.43, R square adj = 0.95
+
+## bwd
+fit.pi.bwd <- lm(rel_base ~   beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 + beta_2.4:beta_4.6 + beta_4.6:beta_6.8, data = bas.rel.no_rp.pi)
+round(summary(fit.pi.bwd)$coef, 5)
+pi.bwd <- glance(fit.pi.bwd) # AIC = -171, BIC = -151.79, R square adj = 0.96
+
+# 2mM h2o2: (choose full model)
+fit.oxi.fwd <- lm(rel_base ~  beta_8.10 + beta_2.4 + beta_6.8 + beta_8.10:beta_6.8, data = bas.rel.no_rp.oxi)
+oxi.fwd <- glance(fit.oxi.fwd)#  AIC = -154.47, BIC = -139, R square adj = 0.916
+
+# two treatments: (choose full model)
+fit.fwd <- lm(rel_base ~ beta_8.10 + beta_2.4 + beta_6.8 + beta_8.10:beta_6.8, data = bas.rel.no_rp)
+fwd <- glance(fit.fwd) # AIC = -264.67, BIC = -245,48, R square adj = 0.909
+
+
+
+# full model
+# 2mM H2O2: (bwd selection)
+fit.oxi <- bas.rel.no_rp.oxi %>% lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.oxi)$coef, 5)
+oxi.full <- glance(fit.oxi) #  AIC = -242, BIC = -218, R square adj = 0.97
+
+# combine - Pi and H2O2: (bwd selection)
+fit.all <- bas.rel.no_rp  %>% lm(rel_base ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.all)$coef, 5)
+full <- glance(fit.all) #  AIC = -407, BIC = -378, R square adj = 0.96
+
+
+
+
+
+# 3. Plateau
+plateau.no_rp.pi <- plateau %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "0Pi")
+plateau.no_rp.oxi <- plateau %>% filter(genotype %in% c(OL.levels, TrunV.levels), Treatment == "2mMH2O2")
+
+
+# variable selection for the lm (with reduction)
+# - Pi:
+full.model.pi <- lm(rel_red ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = plateau.no_rp.pi )
+base.model.pi <- lm(rel_red ~ 1, data = plateau.no_rp.pi )
+
+# 2mM H2O2:
+full.model.oxi <- lm(rel_red ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                 beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = plateau.no_rp.oxi)
+base.model.oxi <- lm(rel_red ~ 1, data = plateau.no_rp.oxi)
+
+
+#choose a model by AIC in a stepwise algorithm
+# forward
+step(base.model.pi, scope=list(upper=full.model.pi,lower=~1),direction="forward")
+step(base.model.oxi, scope = list(upper = full.model.oxi, lower =~1), direction = "forward")
+
+# backward: all prefers full model
+step(full.model.pi, direction="backward") 
+step(full.model.oxi, direction = "backward") 
+
+#the best forward and backward stepwise selected model: (better than full model)
+# - Pi: (both fwd and bwd)
+fit.pi.fwd <- lm(rel_red ~   beta_2.4 + beta_6.8 + beta_4.6 + beta_8.10 + beta_2.4:beta_4.6 + beta_6.8:beta_4.6, data = plateau.no_rp.pi)
+round(summary(fit.pi.fwd)$coef, 5)
+pi.fwd <- glance(fit.pi.fwd) # AIC = -124, BIC = -105,  R square adj = 0.875
+
+# 2mM h2o2:
+#fwd: (smaller AIC& BIC)
+fit.oxi.fwd <- lm(rel_red ~   beta_2.4 + beta_8.10 + beta_6.8 + beta_4.6 + beta_2.4:beta_4.6, data = plateau.no_rp.oxi)
+round(summary(fit.oxi.fwd)$coef, 5)
+oxi.fwd <- glance(fit.oxi.fwd)#  AIC = -144, BIC = -126, R square adj = 0.83
+
+#bwd
+fit.pi.bwd <- lm(rel_red ~   beta_2.4 + beta_6.8 + beta_4.6 + beta_8.10 + beta_2.4:beta_4.6 + beta_6.8:beta_4.6, data = plateau.no_rp.pi)
+round(summary(fit.pi.bwd)$coef, 5)
+pi.bwd <- glance(fit.pi.bwd) # AIC = -124, BIC = -104,  R square adj = 0.875
+
+
+# full model
+# - Pi:
+fit.pi <- plateau.no_rp.pi %>% lm(rel_red ~ beta_2.4 + beta_4.6 + beta_6.8 + beta_8.10 +
+                             beta_2.4:beta_4.6 + beta_4.6:beta_6.8 + beta_6.8:beta_8.10, data = .)
+round(summary(fit.pi)$coef, 5)
+pi <- glance(fit.pi) # AIC = -124, BIC = -102,  R square adj = 0.876
+
+```
+
+#separately model three series for main effect
 ```{r}
 OL.levels <- c("wt","4OL", "6OL", "8OL", "10OL")
 TrunV.levels <- c("wt","2V", "4V", "6V", "8V")
