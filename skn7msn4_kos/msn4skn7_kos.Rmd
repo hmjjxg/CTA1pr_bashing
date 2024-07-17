@@ -347,7 +347,7 @@ pi.slope.rel <- pi.slope %>% filter(!is.na(Max_Slope)) %>%
 
 # plot the maximum slope relative to wt
 pi.slope.rel %>% 
-  filter(!is.na(rel_slope), Genotype != "PC") %>% 
+  filter(!is.na(rel_slope)) %>% 
   ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
  geom_bar_pattern(stat = "summary", fun = "mean",
                    position = position_dodge(preserve = "single"),
@@ -382,6 +382,12 @@ slope_matrix$beta_Skn7 <- with(slope_matrix, ifelse(Genotype == "skn7-" | Genoty
 
 fit.pi <- lm(rel_slope ~  beta_Msn4 + beta_Skn7 + beta_Msn4:beta_Skn7, data = slope_matrix)
 round(summary(fit.pi)$coef, 6)
+
+# only main effect model
+fit.main_effect <- lm(rel_slope ~  beta_Msn4 + beta_Skn7, data = slope_matrix)
+round(summary(fit.main_effect)$coef, 6)
+
+# Conclusion: adding the interaction term does not affecting the intepretation for the main effect (no interaction term dominating the model)
 
 # Extract the summary of the fit
 fit_summary <- summary(fit.pi)
@@ -615,6 +621,29 @@ plateau_matrix$beta_Skn7 <- with(plateau_matrix, ifelse(Genotype == "skn7-" | Ge
 fit.pi <- lm(rel_red ~  beta_Msn4 + beta_Skn7 + beta_Msn4:beta_Skn7, data = plateau_matrix)
 round(summary(fit.pi)$coef, 6)
 
+
+# only main effect model
+fit.main_effect <- lm(rel_red ~  beta_Msn4 + beta_Skn7, data = plateau_matrix)
+round(summary(fit.main_effect)$coef, 6)
+
+# Conclusion: adding the interaction term reduces the 50% main effect size of Skn7 and 30% of Msn4...
+
+# check multicollinearity:
+library(car)
+vif(fit.pi)
+
+# Centering and Scalling to reduce multicollinearity
+plateau_matrix$beta_Msn4_centered <- scale(plateau_matrix$beta_Msn4, center = TRUE, scale = TRUE)
+plateau_matrix$beta_Skn7_centered <- scale(plateau_matrix$beta_Skn7, center = TRUE, scale = TRUE)
+
+# Fitting the model with centered variables
+fit.pi_centered <- lm(rel_red ~ beta_Msn4_centered * beta_Skn7_centered, data = plateau_matrix)
+summary(fit.pi_centered)
+
+# Checking for multicollinearity again (all main effect's vif are smaller and close to one)
+vif(fit.pi_centered)
+
+
 # Extract the summary of the fit
 fit_summary <- summary(fit.pi)
 
@@ -722,6 +751,21 @@ bas_matrix.pi <- bas_matrix %>% filter(Treatment == "0Pi")
 fit.pi <- lm(rel_base ~  beta_Msn4 + beta_Skn7 + beta_Msn4:beta_Skn7, data = bas_matrix.pi)
 round(summary(fit.pi)$coef, 6)
 
+# check multicollinearity:
+library(car)
+vif(fit.pi)
+
+# Centering and Scalling to reduce multicollinearity
+bas_matrix.pi$beta_Msn4_centered <- scale(bas_matrix.pi$beta_Msn4, center = TRUE, scale = TRUE)
+bas_matrix.pi$beta_Skn7_centered <- scale(bas_matrix.pi$beta_Skn7, center = TRUE, scale = TRUE)
+
+# Fitting the model with centered variables
+fit.pi_centered <- lm(rel_base ~ beta_Msn4_centered * beta_Skn7_centered, data = bas_matrix.pi)
+summary(fit.pi_centered)
+
+# Checking for multicollinearity again (all main effect's vif are smaller and close to one, the conclusion does not change)
+vif(fit.pi_centered)
+
 
 # Extract the summary of the fit
 fit_summary <- summary(fit.pi)
@@ -797,4 +841,378 @@ coefficients_bas %>% filter(main_effect != "(Intercept)") %>%
 ggsave("output/msn4skn7_base_rel.png", width = 3.3, height = 3.3)
 
 
+```
+
+# Expression epistasis analysis on Yap1 and Skn7 during Oxidative stress
+Goal: positive control for my linear model
+```{r}
+h2o2.dat.all <- data.cb %>% 
+  filter(treat == "H2O2") %>%  
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, Strain, median) %>%
+  mutate(Genotype = fct_recode(genotype, WT = "wt", `msn2-` = "msn2_ko", `msn4-` = "msn4_ko", `yap1-` = "yap1_ko",
+                               `skn7-` = "skn7_ko", `msn4- skn7-` = "msn4skn7_ko", `msn2- msn4-` = "msn2msn4_ko", `yap1- skn7-` = "skn7yap1_ko")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+
+genotype_color <- RColorBrewer::brewer.pal(8, "Dark2")[c(8, 7, 2, 3, 5, 1, 4, 6)] 
+names(genotype_color) <- c("WT", "msn2-", "yap1-", "msn4-","skn7-", "msn4- skn7-", "yap1- skn7-", "msn2- msn4-")
+
+h2o2.dat.all %>%
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_manual(values= genotype_color, limits = c("WT", "msn2-", "msn4-", "msn2- msn4-",
+                                "yap1- skn7-", "msn4- skn7-", "yap1-", "skn7-"))
+#ggsave("output/20221108-trans-deletion-timecourse-h2o2.png", width = 4.2, height = 4)
+
+```
+# max slope
+### Max Slope
+#### plot & calculate the slope/differiation changes of msn4 and skn7:- Pi
+```{r}
+# function to plot the max slope from the raw data frame
+max_slope <- function(genotypes, rawdata) {
+  # Ensure genotypes is a vector
+  if (!is.vector(genotypes)) {
+    stop("genotypes should be a vector of genotype names.")
+  }
+  
+  # Initiate an empty tibble dataframe to store the results
+  result <- tibble(
+    Genotype = character(),
+    Strain = character(),
+    Max_Slope_tp = numeric(),
+    Max_Slope = numeric()
+  )
+
+  # Iterate through each genotype
+  for (geno in genotypes) {
+    # Filter data for the current genotype
+    filtered_data <- rawdata %>%
+      filter(Genotype == geno)
+    
+    if (nrow(filtered_data) == 0) {
+      cat("No data found for genotype:", geno, "\n")
+      next
+    }
+    
+    for (z in unique(filtered_data$Strain)) {
+    # Fit the loess model
+    strain_data <- filtered_data %>% filter(Strain == z)   
+    test.pi <- loess(new_median ~ new_time, data =  strain_data, span = 0.75, degree = 2)
+    
+    # Create a new data frame for prediction
+    newdata <- data.frame(new_time = 0:240)
+    px <- predict(test.pi, newdata = newdata)
+    
+    # Handle potential NA values in prediction
+    if (any(is.na(px))) {
+      px <- zoo::na.approx(px)
+    }
+    
+    px1 <- diff(px)
+    
+    max_slope_index <- which.max(px1)
+    max_slope_value <- max(px1, na.rm = TRUE)
+    
+
+    # Append results to the tibble
+    result <- result %>% add_row(
+      Genotype = geno,
+      Strain = z,
+      Max_Slope_tp = max_slope_index,
+      Max_Slope = max_slope_value
+    )
+    
+    # Plotting
+    par(mfrow = c(1, 2))
+    
+    plot(0:240, px, type = "l", main = paste("loess model for", geno), xlab = "Time", ylab = "Fitted values")
+    plot(1:240, px1, type = "l", main = paste("diff(loess model) for", geno), xlab = "Time", ylab = "Slope")
+    abline(v = max_slope_index, col = "red")
+  }}
+  
+  return(result)
+}
+
+# Example usage
+max_slope(c("WT","yap1-", "skn7-", "yap1- skn7-"), h2o2.dat.all) # view the plot
+h2o2.slope <- max_slope(c("WT","yap1-", "skn7-", "yap1- skn7-"), h2o2.dat.all) # save the tibble output to a new variable
+
+
+G.levels <- c("WT","yap1-", "skn7-", "yap1- skn7-")
+
+# get the maximum slope relative to the wt
+h2o2.slope.rel <- h2o2.slope %>% filter(!is.na(Max_Slope)) %>% 
+  group_by(Genotype) %>% 
+  mutate(mean_slope = mean(Max_Slope)) %>%
+  mutate(wt_slope = mean(.[.$Genotype == "WT",]$mean_slope)) %>% 
+  mutate(rel_slope = Max_Slope/wt_slope) %>% 
+  mutate(Treatment = "2mMH2O2") %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  select(-wt_slope)
+
+# plot the maximum slope relative to wt
+h2o2.slope.rel %>% 
+  filter(!is.na(rel_slope)) %>% 
+  ggplot(aes(x = Genotype, y = rel_slope, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+ geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+ scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
+#ggsave("output/skn7yap1_slope_h2o2.png", width = 10.16, height = 2)
+
+```
+### Epistasis test between msn4 and Skn7
+#### Max slope
+```{r}
+slope_matrix <- h2o2.slope.rel %>% mutate(beta_Skn7 = 1, beta_Yap1 = 1)
+
+slope_matrix$beta_Yap1 <- with(slope_matrix, ifelse(Genotype == "yap1-" | Genotype == "yap1- skn7-", 0, 1))
+slope_matrix$beta_Skn7 <- with(slope_matrix, ifelse(Genotype == "skn7-" | Genotype == "yap1- skn7-", 0, 1))
+
+fit.h2o2 <- lm(rel_slope ~  beta_Skn7 + beta_Yap1 + beta_Skn7:beta_Yap1, data = slope_matrix)
+round(summary(fit.h2o2)$coef, 6)
+
+# Extract the summary of the fit
+fit_summary <- summary(fit.h2o2)
+
+# Create a tibble to store the coefficients and their statistics
+coefficients_tb <- tibble(
+  main_effect = rownames(fit_summary$coefficients),
+  Estimate = fit_summary$coefficients[, "Estimate"],
+  SE = fit_summary$coefficients[, "Std. Error"],
+  t_value = fit_summary$coefficients[, "t value"],
+  p_value = fit_summary$coefficients[, "Pr(>|t|)"]
+)
+
+
+
+fct.levels <- c("b0","yap1", "skn7", "yap1:skn7")
+# Round the coefficients for better readability (optional)
+coefficients_tb <- coefficients_tb %>% mutate(across(where(is.numeric), ~round(.x, 6))) %>% 
+                   mutate(feature = "slope", Treatment = "0Pi") %>% 
+                   mutate(seg = fct_recode(main_effect, 'yap1' = "beta_Yap1", 'skn7' = "beta_Skn7", 'yap1:skn7' = "beta_Skn7:beta_Yap1", 
+                                           'b0' = "(Intercept)")) %>% 
+                   mutate(seg = factor(seg, levels = fct.levels))
+
+
+coefficients_tb %>% filter(main_effect != "(Intercept)") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff"),labels = c("-Pi")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe"),labels = c("-Pi")) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Max Slope") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+#ggsave("output/skn7yap1_max_slope_0Pi.png", width = 3.3, height = 3.3)
+```
+## Plateau/maximum expression
+The logic is cancel out the impact of basal expression level of each variants. To do so, minus the 0 min basal expression level from each variants, then plot the deduced data at all tp and the selected tp.
+```{r}
+# get the individual basal mean
+
+data.oxi.basal <- h2o2.dat.all %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(replicate, Strain, genotype, basal)
+
+
+# Define levels and G.levels as vectors
+levels <- c("wt", "yap1_ko", "skn7_ko", "skn7yap1_ko")
+G.levels <- c("WT", "yap1-", "skn7-", "yap1- skn7-")
+
+
+# calculate the new CTA1-GFP (a.u.) by decuding the 0 min number for individual strain
+oxi.dect <- merge(h2o2.dat.all, data.oxi.basal, by = c("Strain", "replicate","genotype")) %>% 
+  filter(Genotype %in% c("WT", "yap1-", "skn7-", "yap1- skn7-")) %>%  
+  select(Time, replicate, genotype, median, basal, Genotype) %>%
+  mutate(new_median =(median-basal)/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  arrange(new_time, genotype, replicate)
+
+
+# timecourse deduct curve
+
+oxi.dect %>%
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = new_time, y = new_median, color = Genotype)) + p.timecourse +
+  scale_color_viridis_d(limits = names(G.levels))  +
+  labs(x = "2mM H2O2, Time (min)")
+#ggsave("output/msn4skn7_oxi_deduct.png", width = 6, height = 8)
+
+
+# raw single timepoint deduct curve
+# - Pi: 240min
+oxi.dect %>% 
+  filter(!is.na(new_median), Time == "90min") %>% 
+  ggplot(aes(x = Genotype, y = new_median, color = Genotype)) + bar.list +
+  geom_boxplot() +
+  stat_summary(fun.data = "mean_cl_boot", color = "Red", linewidth = 1, size = 0.8) +
+  geom_jitter(width = 0.2) +
+  scale_color_viridis_d(limits = names(G.levels)) +
+  theme(legend.position = "none") +
+  xlab("0mM Pi, 240 min")
+#ggsave("output/OL_deduct_0Pi_240.png", width = 6, height = 8)
+
+
+# calculate maximum plateau relative to wt: - Pi
+oxi.dect.rel <- oxi.dect %>% filter(Time == "90min") %>% group_by(genotype) %>% 
+  mutate(new_mean_ori = mean(median)) %>% 
+  mutate(new_mean_red = mean(new_median)) %>% 
+  mutate(wt_ori = mean(.[.$Genotype == "WT",]$new_mean_ori)) %>% 
+  mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
+  mutate(rel_ori = median/wt_ori) %>% 
+  mutate(rel_red = new_median/wt_red) %>% 
+  mutate(Treatment = "0Pi") %>% 
+  select(-c(wt_ori, wt_red, rel_ori))
+
+
+
+# plot the basal deduced maximum plateau relative to wt
+oxi.dect.rel %>% 
+  filter(!is.na(new_median)) %>% 
+  ggplot(aes(x = Genotype, y = rel_red, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position=c(0.8,0.9))
+#ggsave("output/msn4skn7_red_rel_max.png", width = 10.16, height = 2)
+
+```
+
+
+### Epistasis test between msn4 and Skn7
+#### Deduced Plateau
+```{r}
+plateau_matrix <- oxi.dect.rel %>% mutate(beta_Yap1 = 1, beta_Skn7 = 1)
+
+plateau_matrix$beta_Yap1 <- with(plateau_matrix, ifelse(Genotype == "yap1-" | Genotype == "yap1- skn7-", 0, 1))
+plateau_matrix$beta_Skn7 <- with(plateau_matrix, ifelse(Genotype == "skn7-" | Genotype == "yap1- skn7-", 0, 1))
+
+
+# variable selection does not solve the main effect dominating the linear model problem
+
+
+# Method set 2: alternative method (take out the interaction term)
+fit.main_effect <- lm(rel_red ~  beta_Yap1 + beta_Skn7, data = plateau_matrix)
+round(summary(fit.main_effect)$coef, 6)
+
+
+fit.oxi <- lm(rel_red ~  beta_Yap1 + beta_Skn7 + beta_Yap1:beta_Skn7, data = plateau_matrix)
+round(summary(fit.oxi)$coef, 6)
+
+
+# check multicollinearity:
+library(car)
+vif(fit.oxi) # interaction terms has vif >6 suggesting high multicollinearity
+
+# Centering and Scalling to reduce multicollinearity
+plateau_matrix$beta_Yap1_centered <- scale(plateau_matrix$beta_Yap1, center = TRUE, scale = TRUE)
+plateau_matrix$beta_Skn7_centered <- scale(plateau_matrix$beta_Skn7, center = TRUE, scale = TRUE)
+
+# Fitting the model with centered variables
+fit.oxi_centered <- lm(rel_red ~ beta_Yap1_centered * beta_Skn7_centered, data = plateau_matrix)
+summary(fit.oxi_centered)
+
+# Checking for multicollinearity again (this time the main effect is significant, vif close to 1, the centering&scalling changed the intepretation of the model with interaction terms)
+vif(fit.oxi_centered)
+
+
+
+# Extract the summary of the fit
+fit_summary <- summary(fit.oxi)
+
+# Create a tibble to store the coefficients and their statistics
+coefficients_tb <- tibble(
+  main_effect = rownames(fit_summary$coefficients),
+  Estimate = fit_summary$coefficients[, "Estimate"],
+  SE = fit_summary$coefficients[, "Std. Error"],
+  t_value = fit_summary$coefficients[, "t value"],
+  p_value = fit_summary$coefficients[, "Pr(>|t|)"]
+)
+
+
+fct.levels <- c("b0","yap1", "skn7", "yap1:skn7")
+# Round the coefficients for better readability (optional)
+coefficients_tb <- coefficients_tb %>% mutate(across(where(is.numeric), ~round(.x, 6))) %>% 
+                   mutate(feature = "deduced_Plateau", Treatment = "2mMH2O2") %>% 
+                   mutate(seg = fct_recode(main_effect, 'yap1' = "beta_Yap1", 'skn7' = "beta_Skn7", 'yap1:skn7' = "beta_Yap1:beta_Skn7", 
+                                           'b0' = "(Intercept)")) %>% 
+                   mutate(seg = factor(seg, levels = fct.levels))
+
+
+coefficients_tb %>% filter(main_effect != "(Intercept)") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("promoter bashing variants") +
+  ylab("Plateau") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= "none",
+        axis.title.x=element_blank())
+#ggsave("output/msn4skn7_ded_plateau_0Pi.png", width = 3.3, height = 3.3)
 ```
