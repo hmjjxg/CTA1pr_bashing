@@ -775,10 +775,6 @@ ol.slope %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position= "none")
 ggsave("output/OL_slope_rel_max.png", width = 10.16, height = 2)
 
-
-
-
-
 ```
 
 #### Get the loess curve fitting for the timecourse data
