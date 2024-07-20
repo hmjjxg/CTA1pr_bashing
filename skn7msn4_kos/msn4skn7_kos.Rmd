@@ -696,6 +696,7 @@ coefficients_tb %>% filter(main_effect != "(Intercept)") %>%
 
 
 ### Basal
+### msn4_skn7 kos
 ```{r}
 # combine - Pi and H2O2 basal
 # calculate maximum plateau relative to wt: - Pi
@@ -846,6 +847,18 @@ ggsave("output/msn4skn7_base_rel.png", width = 3.3, height = 3.3)
 # Expression epistasis analysis on Yap1 and Skn7 during Oxidative stress
 Goal: positive control for my linear model
 ```{r}
+# - Pi
+pi.dat.all <- data.cb %>% 
+  filter(treat == "0Pi") %>%  
+  select(Time = Group, Sample, Plate, replicate = Replicate, genotype, Strain, median) %>%
+  mutate(Genotype = fct_recode(genotype, WT = "wt", `msn2-` = "msn2_ko", `msn4-` = "msn4_ko", `yap1-` = "yap1_ko",
+                               `skn7-` = "skn7_ko", `msn4- skn7-` = "msn4skn7_ko", `msn2- msn4-` = "msn2msn4_ko", `yap1- skn7-` = "skn7yap1_ko")) %>% 
+  mutate(new_median =median/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  arrange(new_time, genotype, replicate)
+
+
+# h2o2
 h2o2.dat.all <- data.cb %>% 
   filter(treat == "H2O2") %>%  
   select(Time = Group, Sample, Plate, replicate = Replicate, genotype, Strain, median) %>%
@@ -966,8 +979,8 @@ h2o2.slope.rel %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
- scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+ scale_fill_manual(values = c("#f6b26bff"),labels = c(bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`2mMH2O2` = "none"),labels = c( bquote(~H[2]*O[2]))) +
   geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
@@ -1008,7 +1021,7 @@ coefficients_tb <- tibble(
 fct.levels <- c("b0","yap1", "skn7", "yap1:skn7")
 # Round the coefficients for better readability (optional)
 coefficients_tb <- coefficients_tb %>% mutate(across(where(is.numeric), ~round(.x, 6))) %>% 
-                   mutate(feature = "slope", Treatment = "0Pi") %>% 
+                   mutate(feature = "slope", Treatment = "2mMH2O2") %>% 
                    mutate(seg = fct_recode(main_effect, 'yap1' = "beta_Yap1", 'skn7' = "beta_Skn7", 'yap1:skn7' = "beta_Skn7:beta_Yap1", 
                                            'b0' = "(Intercept)")) %>% 
                    mutate(seg = factor(seg, levels = fct.levels))
@@ -1025,8 +1038,8 @@ coefficients_tb %>% filter(main_effect != "(Intercept)") %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff"),labels = c("-Pi")) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe"),labels = c("-Pi")) +
+ scale_fill_manual(values = c("#f6b26bff"),labels = c(bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`2mMH2O2` = "none"),labels = c(bquote(~H[2]*O[2]))) +
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
@@ -1038,14 +1051,17 @@ coefficients_tb %>% filter(main_effect != "(Intercept)") %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= c(0.02, 0.9),
         axis.title.x=element_blank())
-#ggsave("output/skn7yap1_max_slope_0Pi.png", width = 3.3, height = 3.3)
+ggsave("output/skn7yap1_max_slope_H2O2.png", width = 3.3, height = 3.3)
 ```
 ## Plateau/maximum expression
 The logic is cancel out the impact of basal expression level of each variants. To do so, minus the 0 min basal expression level from each variants, then plot the deduced data at all tp and the selected tp.
 ```{r}
 # get the individual basal mean
-
+# h2o2 condition
 data.oxi.basal <- h2o2.dat.all %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(replicate, Strain, genotype, basal)
+
+# pi condition
+data.pi.basal <- pi.dat.all %>% filter(!is.na(median), Time == "0min") %>% group_by(genotype) %>% mutate(basal = median) %>% select(replicate, Strain, genotype, basal)
 
 
 # Define levels and G.levels as vectors
@@ -1054,6 +1070,7 @@ G.levels <- c("WT", "yap1-", "skn7-", "yap1- skn7-")
 
 
 # calculate the new CTA1-GFP (a.u.) by decuding the 0 min number for individual strain
+# h2o2 condition
 oxi.dect <- merge(h2o2.dat.all, data.oxi.basal, by = c("Strain", "replicate","genotype")) %>% 
   filter(Genotype %in% c("WT", "yap1-", "skn7-", "yap1- skn7-")) %>%  
   select(Time, replicate, genotype, median, basal, Genotype) %>%
@@ -1063,8 +1080,18 @@ oxi.dect <- merge(h2o2.dat.all, data.oxi.basal, by = c("Strain", "replicate","ge
   mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
   arrange(new_time, genotype, replicate)
 
+# pi condition
+pi.dect <- merge(pi.dat.all, data.pi.basal, by = c("Strain", "replicate","genotype")) %>% 
+  filter(Genotype %in% c("WT", "yap1-", "skn7-", "yap1- skn7-")) %>%  
+  select(Time, replicate, genotype, median, basal, Genotype) %>%
+  mutate(new_median =(median-basal)/1000) %>% 
+  mutate(new_time = as.numeric(gsub("min","",Time)))%>% 
+  mutate(genotype = factor(genotype, levels = levels)) %>% 
+  mutate(Genotype = factor(Genotype, levels = G.levels)) %>% 
+  arrange(new_time, genotype, replicate)
 
-# timecourse deduct curve
+
+# timecourse deduct curve for only h2o2 condition
 
 oxi.dect %>%
   filter(!is.na(new_median)) %>% 
@@ -1096,7 +1123,7 @@ oxi.dect.rel <- oxi.dect %>% filter(Time == "90min") %>% group_by(genotype) %>%
   mutate(wt_red = mean(.[.$Genotype == "WT",]$new_mean_red)) %>% 
   mutate(rel_ori = median/wt_ori) %>% 
   mutate(rel_red = new_median/wt_red) %>% 
-  mutate(Treatment = "0Pi") %>% 
+  mutate(Treatment = "2mMH2O2") %>% 
   select(-c(wt_ori, wt_red, rel_ori))
 
 
@@ -1114,8 +1141,8 @@ oxi.dect.rel %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_fill_manual(values = c("#f6b26bff"),labels = c( bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`2mMH2O2` = "none"),labels = c(bquote(~H[2]*O[2]))) +
   geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
                   position_dodge(width = .9)) +
   scale_y_continuous(limits = c(0, 1.5)) +
@@ -1201,8 +1228,8 @@ coefficients_tb %>% filter(main_effect != "(Intercept)") %>%
                    pattern_spacing = 0.04,  # 0.025
                    pattern_key_scale_factor = 1,
                    width=0.8) + 
-  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
-  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_fill_manual(values = c("#f6b26bff"),labels = c(bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`2mMH2O2` = "none"),labels = c(bquote(~H[2]*O[2]))) +
   geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
                 position = position_dodge(width = 0.9)) +
   scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
@@ -1214,5 +1241,136 @@ coefficients_tb %>% filter(main_effect != "(Intercept)") %>%
   theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
         legend.position= "none",
         axis.title.x=element_blank())
-#ggsave("output/msn4skn7_ded_plateau_0Pi.png", width = 3.3, height = 3.3)
+ggsave("output/skn7yap1_ded_plateau_H2O2.png", width = 3.3, height = 3.3)
+```
+### Basal
+### yap1_skn7 kos
+```{r}
+# combine - Pi and H2O2 basal
+# calculate maximum plateau relative to wt: - Pi
+pi.bas.rel <- pi.dect %>% filter(Time == "0min", !is.na(new_median)) %>% group_by(genotype) %>% 
+               mutate(new_mean_base = mean(median)) %>% 
+               mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+               mutate(rel_base = median/wt_basal) %>% 
+               mutate(Treatment = "0Pi")        
+               
+               
+               
+oxi.bas.rel <- oxi.dect %>% filter(Time == "0min", !is.na(new_median)) %>% group_by(genotype) %>% 
+               mutate(new_mean_base = mean(median)) %>% 
+               mutate(wt_basal = mean(.[.$Genotype == "WT",]$new_mean_base)) %>% 
+               mutate(rel_base = median/wt_basal) %>% 
+               mutate(Treatment = "2mMH2O2") 
+
+bas.rel <- bind_rows(pi.bas.rel, oxi.bas.rel)
+
+# raw base
+bas.rel %>% 
+  filter(!is.na(rel_base), Time == "0min") %>% 
+  ggplot(aes(x = Genotype, y = rel_base, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+  scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff")) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none")) +
+  geom_errorbar(stat = "summary", fun.data = mean_cl_boot, width = 0.2, color = "Black", linewidth = 1, position = 
+                  position_dodge(width = .9)) +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  #geom_jitter(width = 0.3) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("Internal removal (IR) variants") +
+  ylab("Basal exp") +
+  guides(fill = guide_legend(nrow = 1)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), legend.position = "none")
+#ggsave("output/skn7yap1_basal_rel_bar.png", width = 10.16, height = 2)
+
+## linear modeling
+bas_matrix <- bas.rel %>% mutate(beta_Yap1 = 1, beta_Skn7 = 1)
+
+bas_matrix$beta_Yap1 <- with(bas_matrix, ifelse(Genotype == "yap1-" | Genotype == "yap1- skn7-", 0, 1))
+bas_matrix$beta_Skn7 <- with(bas_matrix, ifelse(Genotype == "skn7-" | Genotype == "yap1- skn7-", 0, 1))
+
+# 0 Pi
+bas_matrix.pi <- bas_matrix %>% filter(Treatment == "0Pi")
+fit.pi <- lm(rel_base ~  beta_Yap1 + beta_Skn7 + beta_Yap1:beta_Skn7, data = bas_matrix.pi)
+round(summary(fit.pi)$coef, 6)
+
+# Extract the summary of the fit
+fit_summary <- summary(fit.pi)
+
+# Create a tibble to store the coefficients and their statistics
+coefficients_tb_pi <- tibble(
+  main_effect = rownames(fit_summary$coefficients),
+  Estimate = fit_summary$coefficients[, "Estimate"],
+  SE = fit_summary$coefficients[, "Std. Error"],
+  t_value = fit_summary$coefficients[, "t value"],
+  p_value = fit_summary$coefficients[, "Pr(>|t|)"]
+)
+
+
+# H2O2
+bas_matrix.h2o2 <- bas_matrix %>% filter(Treatment == "2mMH2O2")
+fit.h2o2 <- lm(rel_base ~  beta_Yap1 + beta_Skn7 + beta_Yap1:beta_Skn7, data = bas_matrix.h2o2)
+round(summary(fit.h2o2)$coef, 6)
+
+fit_summary <- summary(fit.h2o2)
+
+# Create a tibble to store the coefficients and their statistics
+coefficients_tb_h2o2 <- tibble(
+  main_effect = rownames(fit_summary$coefficients),
+  Estimate = fit_summary$coefficients[, "Estimate"],
+  SE = fit_summary$coefficients[, "Std. Error"],
+  t_value = fit_summary$coefficients[, "t value"],
+  p_value = fit_summary$coefficients[, "Pr(>|t|)"]
+)
+
+
+fct.levels <- c("b0","yap1", "skn7", "yap1:skn7")
+# Round the coefficients for better readability (optional)
+coefficients_tb_pi <- coefficients_tb_pi %>% mutate(across(where(is.numeric), ~round(.x, 6))) %>% 
+                   mutate(feature = "deduced_Plateau", Treatment = "0Pi") %>% 
+                   mutate(seg = fct_recode(main_effect, 'yap1' = "beta_Yap1", 'skn7' = "beta_Skn7", 'yap1:skn7' = "beta_Yap1:beta_Skn7",
+                                           'b0' = "(Intercept)")) %>% 
+                   mutate(seg = factor(seg, levels = fct.levels))
+
+coefficients_tb_h2o2 <- coefficients_tb_h2o2 %>% mutate(across(where(is.numeric), ~round(.x, 6))) %>% 
+                   mutate(feature = "deduced_Plateau", Treatment = "2mMH2O2") %>% 
+                   mutate(seg = fct_recode(main_effect, 'yap1' = "beta_Yap1", 'skn7' = "beta_Skn7", 'yap1:skn7' = "beta_Yap1:beta_Skn7",
+                                           'b0' = "(Intercept)")) %>% 
+                   mutate(seg = factor(seg, levels = fct.levels))
+
+
+coefficients_bas <- bind_rows(coefficients_tb_pi, coefficients_tb_h2o2)
+
+coefficients_bas %>% filter(main_effect != "(Intercept)") %>% 
+  ggplot(aes(x = seg, y = Estimate, fill = Treatment, pattern = Treatment)) + bar.list.no.stat +
+  geom_bar_pattern(stat = "summary", fun = "mean",
+                   position = position_dodge(preserve = "single"),
+                   color = "black", 
+                   pattern_fill = "black",
+                   pattern_angle = 45,
+                   pattern_density = 0.1,  # 0.1
+                   pattern_spacing = 0.04,  # 0.025
+                   pattern_key_scale_factor = 1,
+                   width=0.8) + 
+ scale_fill_manual(values = c("#b4a7d6ff","#f6b26bff"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  scale_pattern_manual(values = c(`0Pi` = "stripe", `2mMH2O2` = "none"),labels = c("-Pi", bquote(~H[2]*O[2]))) +
+  geom_errorbar(aes(ymin = Estimate - SE, ymax = Estimate + SE), width = 0.2, color = "Black", linewidth = 1, 
+                position = position_dodge(width = 0.9)) +
+  scale_y_continuous(breaks = seq(-0.4, 1.0, 0.2)) +
+  coord_cartesian(ylim = c(-0.2, 1)) +
+  geom_hline(yintercept = 1, col = "gray", linetype = "dashed") +
+  xlab("TF knockout") +
+  ylab("Basal Exp") +
+  guides(fill = guide_legend(nrow = 1, title = NULL), pattern = guide_legend(title = NULL)) +
+  theme(strip.background = element_rect(colour="black", fill="white", size=1, linetype="solid"), 
+        legend.position= c(0.02, 0.9),
+        axis.title.x=element_blank())
+ggsave("output/skn7yap1_base_rel.png", width = 3.3, height = 3.3)
 ```
